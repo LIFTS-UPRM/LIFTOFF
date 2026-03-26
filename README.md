@@ -19,8 +19,9 @@ It is designed to replace fragmented HAB workflows with one integrated system th
 3. [Why STRATOS](#why-stratos)
 4. [Who It’s For](#who-its-for)
 5. [Vision](#vision)
-6. [Status](#status)
-7. [Credits](#credits)
+6. [MCP Tooling Reference](#mcp-tooling-reference)
+7. [Status](#status)
+8. [Credits](#credits)
 
 ---
 
@@ -138,6 +139,110 @@ STRATOS is designed for:
 STRATOS aims to make high-altitude balloon operations more structured, data-driven, and reliable.
 
 The long-term goal is to provide a system where mission knowledge, live telemetry, planning tools, and postflight analysis all work together in one place.
+
+---
+
+## MCP Tooling Reference
+
+STRATOS currently exposes mission operations through FastMCP servers located in `backend/mcp_servers/`.
+
+### Available MCP Servers and Tools
+
+#### 1) NOTAM Server (`liftoff-notam`)
+
+File: `backend/mcp_servers/notam_server.py`
+
+Tool:
+- `check_notam_airspace(latitude, longitude, radius_km=25.0, launch_datetime="", faa_client_id="", faa_client_secret="")`
+
+What it does:
+- queries NOTAM sources (FAA when credentials are provided, plus AviationWeather)
+- filters and scores balloon-relevant advisories
+- returns a launch-airspace clearance recommendation
+
+Key outputs:
+- `total_notams`
+- `relevant_notams` (with `keywords_matched`)
+- `clearance_status` (`NO_CRITICAL_ALERTS`, `REVIEW_REQUIRED`, `MANUAL_CHECK_REQUIRED`)
+- `sources_queried`
+- `observation_links`
+
+#### 2) Weather Server (`liftoff-weather`)
+
+File: `backend/mcp_servers/weather_server.py`
+
+Tools:
+- `get_surface_weather(latitude, longitude, forecast_hours=24)`
+- `get_winds_aloft(latitude, longitude, forecast_datetime)`
+
+What they do:
+- `get_surface_weather`: fetches hourly surface forecast data and computes GO/CAUTION/NO-GO windows
+- `get_winds_aloft`: fetches vertical wind profile at standard pressure levels and flags jet-stream risk
+
+Key outputs:
+- surface weather: `overall_assessment`, `go_windows`, `caution_windows`, `no_go_windows`, `hourly_conditions`
+- winds aloft: `wind_profile`, `jet_stream_alert`, `jet_stream_message`, `forecast_time`
+- both include `observation_links`
+
+#### 3) Trajectory Server (`trajectory`)
+
+File: `backend/mcp_servers/trajectory/server.py`
+
+Tools:
+- `predict_standard(launch_latitude, launch_longitude, launch_datetime, ascent_rate, burst_altitude, descent_rate, launch_altitude=0.0)`
+- `health_check()`
+- `get_supported_profiles()`
+
+What they do:
+- `predict_standard`: runs a standard ascent-burst-descent prediction through the Tawhiri wrapper
+- `health_check`: confirms trajectory service configuration state
+- `get_supported_profiles`: lists available trajectory profiles and required fields
+
+Key outputs:
+- prediction response includes `ok`, `profile`, `request`, `summary`, `path`, `raw`
+- `summary` includes burst/landing points and `water_landing`
+
+### Running MCP Servers Locally
+
+From the `backend/` directory:
+
+```bash
+python -m mcp_servers.notam_server
+python -m mcp_servers.weather_server
+python -m mcp_servers.trajectory.server
+```
+
+### README Template for New MCP Tools
+
+When adding a new MCP tool, document it with this structure:
+
+```markdown
+## Tool: <tool_name>
+
+- Server name: <fastmcp_server_name>
+- File: <path/to/server.py>
+- Purpose: <what mission problem this solves>
+
+### Inputs
+- <param_name> (<type>, default: <value>): <description>
+
+### Output
+- <field_name>: <description>
+
+### Error behavior
+- <validation/network/upstream behavior>
+
+### Example
+- Request: <example args>
+- Response: <example JSON snippet>
+```
+
+Recommended minimum documentation per tool:
+- parameter list (types, defaults, limits)
+- output schema and status fields
+- external dependencies (APIs, environment variables)
+- operational interpretation (how to use result in GO/NO-GO decisions)
+- one realistic example call and response
 
 ---
 
