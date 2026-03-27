@@ -1,0 +1,24 @@
+{
+  "name": "stratos",
+  "version": "1.0.0",
+  "description": "**STRATOS** stands for **System for Trajectory, Analysis & Telemetry Operations in the Stratosphere**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LIFTS-UPRM/STRATOS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/LIFTS-UPRM/STRATOS/issues"
+  },
+  "homepage": "https://github.com/LIFTS-UPRM/STRATOS#readme"
+}
