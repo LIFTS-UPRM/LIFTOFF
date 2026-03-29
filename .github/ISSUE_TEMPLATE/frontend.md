@@ -7,17 +7,22 @@ assignees: []
 ---
 
 ## Objective
+
 What UI or behavior is being implemented?
 
 ## Screens / Components
+
 - Component(s):
 - Page:
 
 ## Behavior
+
 Describe interactions:
+
 - User does X -> system does Y
 
 ## Tasks
+
 - [ ] Build UI
 - [ ] Connect to API
 - [ ] Handle loading state
@@ -31,7 +36,9 @@ Describe interactions:
 - [ ] Matches expected data structure
 
 ## Dependencies
-- #
+
+-
 
 ## Notes
+
 Design references, constraints, etc.
