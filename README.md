@@ -20,9 +20,10 @@ It is designed to replace fragmented HAB workflows with one integrated system th
 4. [Who It’s For](#who-its-for)
 5. [Vision](#vision)
 6. [MCP Tooling Reference](#mcp-tooling-reference)
-7. [Backend API Quick Start](# Backend API Quick Start)
-8. [Status](#status)
-9. [Credits](#credits)
+7. [Backend API Quick Start](#backend-api-quick-start)
+8. [Contributing](#contributing)
+9. [Status](#status)
+10. [Credits](#credits)
 
 ---
 
@@ -289,6 +290,14 @@ curl -s -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"message":"hello"}'
 ```
+
+---
+
+## Contributing
+
+All changes to `main` go through pull requests. CI checks (lint + build for frontend, lint + import validation + tests for backend) must pass and at least one team member must approve before a PR can be merged.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full branch strategy, PR workflow, and local development setup.
 
 ---
 
