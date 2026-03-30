@@ -41,7 +41,7 @@ RUN pip install -r requirements.txt && \
     python setup.py build_ext --inplace
 
 ENV TAWHIRI_DATA_DIR=/data
-ENV FLASK_APP=tawhiri
+ENV FLASK_APP=tawhiri.api
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_RUN_PORT=8000
 

@@ -38,3 +38,8 @@ services:
 
 volumes:
   tawhiri-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Volumes/mandosanti/tawhiri-data
