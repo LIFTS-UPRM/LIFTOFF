@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import styles from "./Sidebar.module.css";
 
@@ -53,31 +54,69 @@ function TelemetryIcon() {
   );
 }
 
+function SharePointIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5"  r="2.5" />
+      <circle cx="6"  cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <line x1="8.4"  y1="13.4" x2="15.6" y2="17.6" />
+      <line x1="15.6" y1="6.4"  x2="8.4"  y2="10.6" />
+    </svg>
+  );
+}
+
+function RocketIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+      <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+    </svg>
+  );
+}
+
 // ─── Data ─────────────────────────────────────────────────────
 const TOOLS = [
-  { id: "flight",    label: "Flight Planning", Icon: RouteIcon },
-  { id: "weather",   label: "Weather Data",    Icon: CloudIcon },
-  { id: "telemetry", label: "Telemetry",        Icon: TelemetryIcon },
+  { id: "flight",     label: "Trajectory Simulator", Icon: RouteIcon },
+  { id: "weather",    label: "Weather Data",    Icon: CloudIcon },
+  { id: "telemetry",  label: "Telemetry",       Icon: TelemetryIcon },
+  { id: "sharepoint", label: "SharePoint",      Icon: SharePointIcon },
 ];
 
-const RECENTS: Record<string, { id: string; title: string; active?: boolean }[]> = {
-  Today: [
-    { id: "1", title: "Pre-flight Checklist Review", active: true },
-    { id: "2", title: "NOTAM Analysis Region 4" },
-    { id: "3", title: "Trajectory Optimization Run" },
-  ],
-  Yesterday: [
-    { id: "4", title: "Post-flight Data Recovery" },
-    { id: "5", title: "Wind Shear Analysis 03/24" },
-    { id: "6", title: "Comms Check Frequency 7" },
-  ],
-  "Last Week": [
-    { id: "7",  title: "Thermal Profile Sim B-12" },
-    { id: "8",  title: "Landing Zone Recon Alpha" },
-    { id: "9",  title: "Safety Protocol Update v3" },
-    { id: "10", title: "GPS Drift Correction Log" },
-  ],
-};
+type MissionStatus = "active" | "upcoming" | "completed";
+
+const MISSIONS: { id: string; title: string; status: MissionStatus }[] = [
+  { id: "m1", title: "ASCENT Sub-Scale",      status: "active" },
+  { id: "m2", title: "ASCENT",                status: "upcoming" },
+  { id: "m3", title: "Nexo",                  status: "completed" },
+];
+
+// ─── Toggle switch ─────────────────────────────────────────────
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={"Toggle " + label}
+      onClick={onChange}
+      className={styles.toggle + (checked ? " " + styles.toggleOn : "")}
+    >
+      <span className={styles.toggleThumb} />
+    </button>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────
 interface SidebarProps {
@@ -85,14 +124,20 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
-export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
+export default function Sidebar({ isOpen }: SidebarProps) {
+  const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});
+
+  function toggleTool(id: string) {
+    setEnabledTools((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
   return (
-    <aside className={`${styles.sidebar} ${isOpen ? styles.open : styles.closed}`}>
+    <aside className={styles.sidebar + (isOpen ? " " + styles.open : " " + styles.closed)}>
       {/* Brand row */}
       <div className={styles.brand}>
         <div className={styles.brandLeft}>
           <div className={styles.brandLogoWrap}>
-            <Image src="/logos/stratos-color.svg" alt="STRATOS" width={22} height={22} priority />
+            <Image src="/assets/STRATOS_LOGO_SVG/Color.svg" alt="STRATOS" width={22} height={22} priority />
           </div>
           <span className={styles.brandName}>STRATOS</span>
         </div>
@@ -112,34 +157,55 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       {/* Scrollable body */}
       <div className={styles.scrollArea}>
-        {/* Tools */}
+
+        {/* Tools — per-MCP toggle rows */}
         <section className={styles.section}>
-          <p className={styles.sectionLabel}>Tools</p>
-          {TOOLS.map(({ id, label, Icon }) => (
-            <button key={id} className={styles.navItem}>
-              <span className={styles.navIcon}><Icon /></span>
-              <span className={styles.navLabel}>{label}</span>
-            </button>
-          ))}
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Tools</span>
+          </div>
+          <div className={styles.sectionBody}>
+            {TOOLS.map(({ id, label, Icon }) => {
+              const on = !!enabledTools[id];
+              return (
+                <div
+                  key={id}
+                  className={styles.toolRow + (on ? " " + styles.toolRowOn : "")}
+                >
+                  <span className={styles.toolIcon + (on ? " " + styles.toolIconOn : "")}>
+                    <Icon />
+                  </span>
+                  <span className={styles.toolLabel + (on ? " " + styles.toolLabelOn : "")}>
+                    {label}
+                  </span>
+                  <Toggle checked={on} onChange={() => toggleTool(id)} label={label} />
+                </div>
+              );
+            })}
+          </div>
         </section>
 
-        {/* Recents */}
+        {/* Missions */}
         <section className={styles.section}>
-          <p className={styles.sectionLabel}>Recents</p>
-          {Object.entries(RECENTS).map(([period, chats]) => (
-            <div key={period} className={styles.timeGroup}>
-              <p className={styles.timeLabel}>{period}</p>
-              {chats.map((chat) => (
-                <button
-                  key={chat.id}
-                  className={`${styles.chatItem} ${chat.active ? styles.chatItemActive : ""}`}
-                >
-                  <span className={styles.chatTitle}>{chat.title}</span>
-                </button>
-              ))}
-            </div>
-          ))}
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Missions</span>
+          </div>
+          <div className={styles.sectionBody}>
+            {MISSIONS.map((m) => (
+              <button
+                key={m.id}
+                className={
+                  styles.missionItem +
+                  (m.status === "active" ? " " + styles.missionActive : "")
+                }
+              >
+                <span className={styles.missionIcon}><RocketIcon /></span>
+                <span className={styles.missionTitle}>{m.title}</span>
+                <span className={styles.statusDot + " " + styles["status_" + m.status]} />
+              </button>
+            ))}
+          </div>
         </section>
+
       </div>
     </aside>
   );

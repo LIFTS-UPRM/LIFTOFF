@@ -48,14 +48,15 @@ function LoadingSpinner() {
 interface InputBarProps {
   onSend: (content: string) => void;
   disabled?: boolean;
+  suggestions?: string[];
 }
 
-export default function InputBar({ onSend, disabled = false }: InputBarProps) {
+export default function InputBar({ onSend, disabled = false, suggestions }: InputBarProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = () => {
-    const trimmed = value.trim();
+  const handleSubmit = (text?: string) => {
+    const trimmed = (text ?? value).trim();
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setValue("");
@@ -80,14 +81,30 @@ export default function InputBar({ onSend, disabled = false }: InputBarProps) {
 
   return (
     <div className={styles.wrapper}>
+      {/* Suggestion chips — shown above input when provided */}
+      {suggestions && suggestions.length > 0 && (
+        <div className={styles.suggestions}>
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              className={styles.chip}
+              onClick={() => handleSubmit(s)}
+              type="button"
+              disabled={disabled}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input row */}
       <div className={styles.inputContainer}>
-        {/* Left: context / attach */}
         <button className={styles.leftBtn} type="button"
                 aria-label="Add attachment or context" title="Add context">
           <PlusIcon />
         </button>
 
-        {/* Textarea */}
         <textarea
           ref={textareaRef}
           className={styles.textarea}
@@ -100,11 +117,10 @@ export default function InputBar({ onSend, disabled = false }: InputBarProps) {
           aria-label="Message input"
         />
 
-        {/* Right: send + paperclip */}
         <div className={styles.rightActions}>
           <button
             className={`${styles.sendBtn} ${canSend ? styles.sendBtnActive : ""}`}
-            onClick={handleSubmit}
+            onClick={() => handleSubmit()}
             disabled={!canSend && !disabled}
             aria-label={disabled ? "Waiting for response" : "Send message"}
             title={disabled ? "Waiting…" : "Send (Enter)"}
@@ -112,18 +128,12 @@ export default function InputBar({ onSend, disabled = false }: InputBarProps) {
           >
             {disabled ? <LoadingSpinner /> : <SendIcon />}
           </button>
-          <button className={styles.attachBtn} type="button"
-                  aria-label="Attach file" title="Attach file">
-            <PaperclipIcon />
-          </button>
         </div>
       </div>
 
       {/* Hint row */}
       <div className={styles.hintRow}>
-        <p className={styles.hint}>
-          STRATOS AI can make mistakes. Check important info.
-        </p>
+        <p className={styles.hint}>STRATOS AI can make mistakes. Check important info.</p>
         <button className={styles.commandsBtn} type="button" aria-label="View slash commands">
           / commands
         </button>

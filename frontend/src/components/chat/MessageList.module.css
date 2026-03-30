@@ -116,6 +116,16 @@
   max-width: 520px;
 }
 
+.emptyLogoWrap {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  margin-bottom: 4px;
+}
+
 .emptyLabel {
   font-size: 15px;
   font-weight: 600;

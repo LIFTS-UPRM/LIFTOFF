@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import type { Message } from "@/types/chat";
 import styles from "./MessageList.module.css";
 
@@ -55,30 +56,24 @@ function TypingIndicator() {
   );
 }
 
-// ─── Empty state ───────────────────────────────────────────────
-const SUGGESTIONS = [
-  "Run trajectory analysis with current wind data",
-  "Show active NOTAMs for the launch region",
-  "What's our go/no-go status for the launch window?",
-];
-
-function EmptyState({ onSuggestion }: { onSuggestion?: (text: string) => void }) {
+// ─── Empty state (no suggestions — they live above the input) ──
+function EmptyState() {
   return (
     <div className={styles.emptyState}>
       <div className={styles.emptyInner}>
+        <div className={styles.emptyLogoWrap}>
+          <Image
+            src="/assets/STRATOS_LOGO_SVG/Color.svg"
+            alt="STRATOS"
+            width={52}
+            height={52}
+            priority
+          />
+        </div>
         <p className={styles.emptyLabel}>STRATOS Mission Chat</p>
         <p className={styles.emptySubtitle}>
           Ask anything about telemetry, trajectory, or flight data.
         </p>
-        {onSuggestion && (
-          <div className={styles.suggestions}>
-            {SUGGESTIONS.map((s) => (
-              <button key={s} className={styles.suggestionChip} onClick={() => onSuggestion(s)}>
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -88,13 +83,11 @@ function EmptyState({ onSuggestion }: { onSuggestion?: (text: string) => void })
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
-  onSuggestion?: (text: string) => void;
 }
 
 export default function MessageList({
   messages,
   isLoading = false,
-  onSuggestion,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -105,7 +98,7 @@ export default function MessageList({
   return (
     <div className={styles.container}>
       {messages.length === 0 && !isLoading ? (
-        <EmptyState onSuggestion={onSuggestion} />
+        <EmptyState />
       ) : (
         <div className={styles.feed}>
           {messages.map((msg) =>
