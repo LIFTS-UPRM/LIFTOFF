@@ -1,71 +1,112 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import type { Message } from "@/types/chat";
 import styles from "./MessageList.module.css";
 
-interface MessageListProps {
-  messages: Message[];
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === "user";
-
+// ─── Helpers ──────────────────────────────────────────────────
+function formatUtcTime(date: Date): string {
   return (
-    <div className={`${styles.messageRow} ${isUser ? styles.userRow : styles.assistantRow}`}>
-      {!isUser && (
-        <div className={styles.avatar} aria-label="STRATOS AI">
-          ⬡
-        </div>
-      )}
+    date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }) + " UTC"
+  );
+}
 
-      <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.assistantBubble}`}>
-        <p className={styles.messageText}>{message.content}</p>
-        <span className={styles.timestamp}>{formatTime(message.createdAt)}</span>
+// ─── Message components ────────────────────────────────────────
+function AssistantMessage({ message }: { message: Message }) {
+  return (
+    <div className={styles.assistantCard}>
+      <div className={styles.assistantHeader}>
+        <span className={styles.assistantLabel}>STRATOS AI</span>
+        <span className={styles.assistantTime}>{formatUtcTime(message.createdAt)}</span>
       </div>
-
-      {isUser && (
-        <div className={`${styles.avatar} ${styles.userAvatar}`} aria-label="You">
-          ◉
-        </div>
-      )}
+      <p className={styles.assistantText}>{message.content}</p>
     </div>
   );
 }
 
+function UserMessage({ message }: { message: Message }) {
+  return (
+    <div className={styles.userRow}>
+      <div className={styles.userBubble}>
+        <p className={styles.userText}>{message.content}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Typing indicator ─────────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div className={styles.assistantCard}>
+      <div className={styles.assistantHeader}>
+        <span className={styles.assistantLabel}>STRATOS AI</span>
+      </div>
+      <div className={styles.typingDots}>
+        <span className={styles.dot} style={{ animationDelay: "0ms" }} />
+        <span className={styles.dot} style={{ animationDelay: "160ms" }} />
+        <span className={styles.dot} style={{ animationDelay: "320ms" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Empty state (no suggestions — they live above the input) ──
 function EmptyState() {
   return (
     <div className={styles.emptyState}>
-      <span className={styles.emptyIcon}>⬡</span>
-      <h2 className={styles.emptyTitle}>STRATOS Mission Chat</h2>
-      <p className={styles.emptySubtitle}>
-        Ask anything about telemetry, trajectory, or flight data.
-      </p>
+      <div className={styles.emptyInner}>
+        <div className={styles.emptyLogoWrap}>
+          <Image
+            src="/assets/STRATOS_LOGO_SVG/Color.svg"
+            alt="STRATOS"
+            width={52}
+            height={52}
+            priority
+          />
+        </div>
+        <p className={styles.emptyLabel}>STRATOS Mission Chat</p>
+        <p className={styles.emptySubtitle}>
+          Ask anything about telemetry, trajectory, or flight data.
+        </p>
+      </div>
     </div>
   );
 }
 
-export default function MessageList({ messages }: MessageListProps) {
+// ─── Main ──────────────────────────────────────────────────────
+interface MessageListProps {
+  messages: Message[];
+  isLoading?: boolean;
+}
+
+export default function MessageList({
+  messages,
+  isLoading = false,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   return (
     <div className={styles.container}>
-      {messages.length === 0 ? (
+      {messages.length === 0 && !isLoading ? (
         <EmptyState />
       ) : (
-        <div className={styles.messageList}>
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+        <div className={styles.feed}>
+          {messages.map((msg) =>
+            msg.role === "user"
+              ? <UserMessage key={msg.id} message={msg} />
+              : <AssistantMessage key={msg.id} message={msg} />
+          )}
+          {isLoading && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
       )}

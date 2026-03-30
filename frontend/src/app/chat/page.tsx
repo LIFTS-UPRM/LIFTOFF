@@ -9,6 +9,12 @@ import MessageList from "@/components/chat/MessageList";
 import InputBar from "@/components/chat/InputBar";
 import styles from "./ChatPage.module.css";
 
+const SUGGESTIONS = [
+  "Run trajectory analysis with current wind data",
+  "Show active NOTAMs for the launch region",
+  "What's our go/no-go status for the launch window?",
+];
+
 let messageCounter = 0;
 function generateId(): string {
   return `msg-${++messageCounter}-${Date.now()}`;
@@ -60,7 +66,7 @@ export default function ChatPage() {
 
   return (
     <div className={styles.appShell}>
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} onToggle={handleToggleSidebar} />
 
       <div className={styles.mainArea}>
         <Header
@@ -69,8 +75,15 @@ export default function ChatPage() {
         />
 
         <main className={styles.chatMain}>
-          <MessageList messages={messages} />
-          <InputBar onSend={handleSend} disabled={isLoading} />
+          <MessageList
+            messages={messages}
+            isLoading={isLoading}
+          />
+          <InputBar
+            onSend={handleSend}
+            disabled={isLoading}
+            suggestions={messages.length === 0 && !isLoading ? SUGGESTIONS : undefined}
+          />
         </main>
       </div>
     </div>
