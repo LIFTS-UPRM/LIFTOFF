@@ -271,7 +271,7 @@ Guidelines:
 async def execute_tool(name: str, tool_input: dict) -> str:
     """Execute any named tool and return a JSON string result."""
     from mcp_servers.weather_server    import get_surface_weather, get_winds_aloft
-    from mcp_servers.notam_server      import check_notam_airspace
+    # from mcp_servers.notam_server      import check_notam_airspace
     from mcp_servers.trajectory.server import predict_standard, health_check, get_supported_profiles
 
     if name == "get_surface_weather":
@@ -281,7 +281,7 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         result = await get_winds_aloft(**tool_input)
 
     elif name == "check_notam_airspace":
-        s = get_settings()
+        # s = get_settings()
         # result = await check_notam_airspace(
         #     **tool_input,
         #     faa_client_id=s.faa_client_id,
