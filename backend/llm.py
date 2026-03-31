@@ -271,7 +271,6 @@ Guidelines:
 async def execute_tool(name: str, tool_input: dict) -> str:
     """Execute any named tool and return a JSON string result."""
     from mcp_servers.weather_server    import get_surface_weather, get_winds_aloft
-    # from mcp_servers.notam_server      import check_notam_airspace
     from mcp_servers.trajectory.server import predict_standard, health_check, get_supported_profiles
 
     if name == "get_surface_weather":
