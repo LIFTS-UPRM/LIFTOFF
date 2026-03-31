@@ -281,7 +281,6 @@ async def execute_tool(name: str, tool_input: dict) -> str:
         result = await get_winds_aloft(**tool_input)
 
     elif name == "check_notam_airspace":
-        # )
         result = {
         "clearance_status": "MANUAL_CHECK_REQUIRED",
         "summary": "NOTAM check disabled in development. FAA credentials not configured.",
