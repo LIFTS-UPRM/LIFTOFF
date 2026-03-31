@@ -282,7 +282,6 @@ async def execute_tool(name: str, tool_input: dict) -> str:
 
     elif name == "check_notam_airspace":
         # s = get_settings()
-        # result = await check_notam_airspace(
         #     **tool_input,
         #     faa_client_id=s.faa_client_id,
         #     faa_client_secret=s.faa_client_secret,
