@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import type { Message } from "@/types/chat";
+import type { Message, ToolCallRecord } from "@/types/chat";
 import styles from "./MessageList.module.css";
 
-// ─── Helpers ──────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────
 function formatUtcTime(date: Date): string {
   return (
     date.toLocaleTimeString("en-US", {
@@ -14,6 +14,64 @@ function formatUtcTime(date: Date): string {
       second: "2-digit",
       hour12: false,
     }) + " UTC"
+  );
+}
+
+// ─── Tool call display ─────────────────────────────────────────
+const TOOL_LABELS: Record<string, string> = {
+  get_surface_weather:           "Surface Weather",
+  get_winds_aloft:               "Winds Aloft",
+  check_notam_airspace:          "NOTAM Check",
+  astra_list_balloons:           "Balloon Catalog",
+  astra_list_parachutes:         "Parachute Catalog",
+  astra_calculate_nozzle_lift:   "Nozzle Lift",
+  astra_calculate_balloon_volume:"Balloon Volume",
+  astra_run_simulation:          "Monte Carlo Simulation",
+};
+
+function getArgSummary(name: string, args: Record<string, unknown>): string {
+  switch (name) {
+    case "get_surface_weather":
+    case "get_winds_aloft":
+    case "check_notam_airspace":
+      return `${args.latitude}°, ${args.longitude}°`;
+    case "astra_calculate_nozzle_lift":
+    case "astra_calculate_balloon_volume":
+      return `${args.balloon_model} · ${args.gas_type}`;
+    case "astra_run_simulation":
+      return `${args.balloon_model} · ${args.num_runs ?? 5} runs`;
+    default:
+      return "";
+  }
+}
+
+function ToolCallsSection({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
+  if (!toolCalls.length) return null;
+  return (
+    <details className={styles.toolCalls}>
+      <summary className={styles.toolCallsSummary}>
+        <span className={styles.toolCallsChevron}>▸</span>
+        <span className={styles.toolCallsLabel}>
+          {toolCalls.length} tool{toolCalls.length !== 1 ? "s" : ""} used
+        </span>
+      </summary>
+      <ul className={styles.toolCallsList}>
+        {toolCalls.map((tc, i) => {
+          const summary = getArgSummary(tc.name, tc.args);
+          return (
+            <li key={i} className={styles.toolCallItem}>
+              <span className={styles.toolCallDot} />
+              <span className={styles.toolCallName}>
+                {TOOL_LABELS[tc.name] ?? tc.name}
+              </span>
+              {summary && (
+                <span className={styles.toolCallArgs}>{summary}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </details>
   );
 }
 
@@ -26,6 +84,9 @@ function AssistantMessage({ message }: { message: Message }) {
         <span className={styles.assistantTime}>{formatUtcTime(message.createdAt)}</span>
       </div>
       <p className={styles.assistantText}>{message.content}</p>
+      {message.toolCalls && message.toolCalls.length > 0 && (
+        <ToolCallsSection toolCalls={message.toolCalls} />
+      )}
     </div>
   );
 }
@@ -40,23 +101,44 @@ function UserMessage({ message }: { message: Message }) {
   );
 }
 
-// ─── Typing indicator ─────────────────────────────────────────
+// ─── Loading indicator ─────────────────────────────────────────
+const LOADING_STEPS = [
+  "Analyzing request…",
+  "Querying weather data…",
+  "Running simulation…",
+  "Computing trajectory…",
+];
+
 function TypingIndicator() {
+  const [stepIdx, setStepIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(
+      () => setStepIdx((i) => (i + 1) % LOADING_STEPS.length),
+      2800,
+    );
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className={styles.assistantCard}>
       <div className={styles.assistantHeader}>
         <span className={styles.assistantLabel}>STRATOS AI</span>
+        <span className={styles.processingBadge}>processing</span>
       </div>
-      <div className={styles.typingDots}>
-        <span className={styles.dot} style={{ animationDelay: "0ms" }} />
-        <span className={styles.dot} style={{ animationDelay: "160ms" }} />
-        <span className={styles.dot} style={{ animationDelay: "320ms" }} />
+      <div className={styles.loadingState}>
+        <div className={styles.scanBar}>
+          <div className={styles.scanLine} />
+        </div>
+        <span key={stepIdx} className={styles.loadingStep}>
+          {LOADING_STEPS[stepIdx]}
+        </span>
       </div>
     </div>
   );
 }
 
-// ─── Empty state (no suggestions — they live above the input) ──
+// ─── Empty state ───────────────────────────────────────────────
 function EmptyState() {
   return (
     <div className={styles.emptyState}>
