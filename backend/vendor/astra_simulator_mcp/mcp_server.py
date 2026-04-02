@@ -11,6 +11,7 @@ University of Southampton ASTRA Simulator — MCP wrapper.
 
 import json
 import hashlib
+import logging
 import os
 import pickle
 import statistics
@@ -18,6 +19,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, create_model
 from mcp.server.fastmcp import FastMCP
@@ -63,6 +66,19 @@ STD_EXCESS_PRESSURE = 1.0 # Excess pressure coefficient
 
 VALID_GAS_TYPES = ("Helium", "Hydrogen")
 GFS_CACHE_ROOT = Path(__file__).resolve().parent / ".cache" / "gfs"
+
+# Pressure levels (hPa) fetched from Open-Meteo for the NOAA fallback path.
+# Ordered surface → stratosphere so altitude arrays are monotonically increasing.
+_OM_LEVELS = [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30]
+
+# ISA-approximate geometric altitudes (m) for each pressure level,
+# used when Open-Meteo geopotential height data is missing.
+_OM_LEVEL_ALT_M: dict[int, float] = {
+    1000: 111.0, 925: 800.0,  850: 1500.0, 700: 3050.0,
+    500: 5575.0, 400: 7185.0, 300: 9165.0, 250: 10365.0,
+    200: 11784.0, 150: 13608.0, 100: 16180.0, 70: 18442.0,
+    50: 20576.0,  30: 23849.0,
+}
 
 
 # ── Input models ───────────────────────────────────────────────────────────────
@@ -304,7 +320,7 @@ def _format_balloon_row_md(name: str, spec: tuple) -> str:
 
 def _latest_gfs_cycle_datetime(simulation_dt: datetime) -> datetime:
     """Mirror ASTRA's idea of the newest candidate GFS cycle."""
-    current_dt = datetime.now()
+    current_dt = datetime.utcnow()
     if simulation_dt < current_dt:
         current_dt = simulation_dt
     return current_dt.replace(hour=(current_dt.hour // 6) * 6,
@@ -551,6 +567,176 @@ def _load_or_refresh_forecast_cache(environment) -> dict:
     raise refresh_error if refresh_error else RuntimeError("Failed to load forecast cache")
 
 
+async def _fetch_open_meteo_weather_profile(
+    lat: float, lon: float, launch_dt: datetime
+) -> dict:
+    """Fetch pressure-level forecast data from Open-Meteo (NOAA GFS fallback)."""
+    import httpx
+
+    hourly_vars: list[str] = []
+    for lv in _OM_LEVELS:
+        hourly_vars += [
+            f"temperature_{lv}hPa",
+            f"wind_speed_{lv}hPa",
+            f"wind_direction_{lv}hPa",
+            f"geopotential_height_{lv}hPa",
+        ]
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": ",".join(hourly_vars),
+        "wind_speed_unit": "ms",
+        "forecast_days": 3,
+        "timezone": "UTC",
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get("https://api.open-meteo.com/v1/forecast", params=params)
+        r.raise_for_status()
+        data = r.json()
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "launch_dt": launch_dt,
+        "times_str": data["hourly"]["time"],
+        "hourly": data["hourly"],
+    }
+
+
+def _prime_environment_from_open_meteo(environment, profile: dict) -> dict:
+    """
+    Set ASTRA forecastEnvironment interpolation functions from Open-Meteo data.
+
+    Replaces the NOAA OPeNDAP download when that endpoint is unavailable.
+    Builds bilinear (altitude × time) interpolators for pressure, temperature,
+    wind speed, and wind direction using pressure-level forecast data.
+    Wind direction uses sin/cos decomposition to handle the 0°/360° wrap.
+    """
+    import numpy as np
+    from astra import global_tools as tools
+
+    hourly = profile["hourly"]
+    launch_dt: datetime = profile["launch_dt"]
+    times_dt = [datetime.fromisoformat(t) for t in profile["times_str"]]
+    t0 = times_dt[0]
+
+    # Time axis: hours since start of forecast window
+    times_h = np.array([(t - t0).total_seconds() / 3600.0 for t in times_dt])
+    n_t = len(times_h)
+    n_lv = len(_OM_LEVELS)
+
+    # Altitude axis: geopotential heights reported by Open-Meteo (stable over time)
+    alts_m: list[float] = []
+    for lv in _OM_LEVELS:
+        vals = [
+            v for v in (hourly.get(f"geopotential_height_{lv}hPa") or [])[:12]
+            if v is not None
+        ]
+        alts_m.append(float(np.mean(vals)) if vals else _OM_LEVEL_ALT_M[lv])
+    alts = np.array(alts_m)
+
+    # 2D data arrays shaped [n_levels, n_times]
+    press_2d = np.zeros((n_lv, n_t))
+    temp_2d  = np.zeros((n_lv, n_t))
+    wspd_2d  = np.zeros((n_lv, n_t))
+    wdir_sin = np.zeros((n_lv, n_t))
+    wdir_cos = np.ones((n_lv, n_t))
+
+    for li, lv in enumerate(_OM_LEVELS):
+        press_2d[li, :] = float(lv)
+
+        for key, arr in [
+            (f"temperature_{lv}hPa", temp_2d),
+            (f"wind_speed_{lv}hPa",  wspd_2d),
+        ]:
+            vals = hourly.get(key) or []
+            for ti in range(n_t):
+                v = vals[ti] if ti < len(vals) and vals[ti] is not None else None
+                arr[li, ti] = float(v) if v is not None else (arr[li, ti - 1] if ti > 0 else 0.0)
+
+        dir_vals = hourly.get(f"wind_direction_{lv}hPa") or []
+        for ti in range(n_t):
+            dv = dir_vals[ti] if ti < len(dir_vals) and dir_vals[ti] is not None else None
+            if dv is not None:
+                rad = np.radians(float(dv))
+                wdir_sin[li, ti] = np.sin(rad)
+                wdir_cos[li, ti] = np.cos(rad)
+            elif ti > 0:
+                wdir_sin[li, ti] = wdir_sin[li, ti - 1]
+                wdir_cos[li, ti] = wdir_cos[li, ti - 1]
+
+    # UTC offset
+    if environment.UTC_offset == 0:
+        environment.UTC_offset = tools.getUTCOffset(
+            environment.launchSiteLat, environment.launchSiteLon, environment.dateAndTime
+        )
+    environment._UTC_time = environment.dateAndTime - timedelta(
+        seconds=environment.UTC_offset * 3600
+    )
+
+    def _t_h(dt: datetime) -> float:
+        return (dt - t0).total_seconds() / 3600.0
+
+    def _utc_dt(time: datetime) -> datetime:
+        return time - timedelta(seconds=environment.UTC_offset * 3600)
+
+    def _interp(arr_2d: "np.ndarray", alt: float, t: float) -> float:
+        """Bilinear interpolation over (altitude, time) with clamped extrapolation."""
+        t_c = float(np.clip(t, times_h[0], times_h[-1]))
+        ti_hi = int(np.clip(np.searchsorted(times_h, t_c), 1, n_t - 1))
+        ti_lo = ti_hi - 1
+        dt_span = times_h[ti_hi] - times_h[ti_lo]
+        wt = (t_c - times_h[ti_lo]) / dt_span if dt_span > 0 else 0.5
+        v0 = float(np.interp(alt, alts, arr_2d[:, ti_lo]))
+        v1 = float(np.interp(alt, alts, arr_2d[:, ti_hi]))
+        return v0 * (1.0 - wt) + v1 * wt
+
+    environment.getPressure      = lambda lat, lon, alt, time: _interp(
+        press_2d, alt, _t_h(_utc_dt(time)))
+    environment.getTemperature   = lambda lat, lon, alt, time: _interp(
+        temp_2d,  alt, _t_h(_utc_dt(time)))
+    environment.getWindSpeed     = lambda lat, lon, alt, time: _interp(
+        wspd_2d,  alt, _t_h(_utc_dt(time)))
+    environment.getWindDirection = lambda lat, lon, alt, time: float(
+        np.degrees(np.arctan2(
+            _interp(wdir_sin, alt, _t_h(_utc_dt(time))),
+            _interp(wdir_cos, alt, _t_h(_utc_dt(time))),
+        )) % 360
+    )
+
+    air_molec_mass = 0.02896
+    gas_constant   = 8.31447
+    standard_temp_rankine = tools.c2kel(15) * (9.0 / 5.0)
+    mu0 = 0.01827
+    sutherland_const = 120
+
+    environment.getDensity = lambda lat, lon, alt, time: (
+        environment.getPressure(lat, lon, alt, time)
+        * 100
+        * air_molec_mass
+        / (gas_constant * tools.c2kel(environment.getTemperature(lat, lon, alt, time)))
+    )
+
+    def viscosity(lat, lon, alt, time):
+        temp_rankine = tools.c2kel(environment.getTemperature(lat, lon, alt, time)) * (9.0 / 5.0)
+        tto = (temp_rankine / standard_temp_rankine) ** 1.5
+        tr = ((0.555 * standard_temp_rankine) + sutherland_const) / (
+            (0.555 * temp_rankine) + sutherland_const
+        )
+        return (mu0 * tto * tr) / 1000.0
+
+    environment.getViscosity = viscosity
+    environment._weatherLoaded = True
+
+    return {
+        "source": "open-meteo",
+        "levels_hpa": _OM_LEVELS,
+        "alt_range_m": [float(alts[0]), float(alts[-1])],
+        "time_range_utc": [times_dt[0].isoformat(), times_dt[-1].isoformat()],
+    }
+
+
 def _extract_profile_summary(profile) -> dict:
     """Extract key scalars from a flightProfile object."""
     return {
@@ -697,14 +883,18 @@ async def astra_list_parachutes(params: ListInput) -> str:
     if params.response_format == "json":
         result = {
             name: {"reference_area_m2": area}
-            for name, area in sorted(parachutes.items())
+            for name, area in sorted(
+                (n, a) for n, a in parachutes.items() if n is not None and n != ""
+            )
         }
         return json.dumps(result, indent=2)
 
     lines = ["# Available Parachute Models\n"]
     lines.append("| Model | Reference Area (m²) | Approx. Diameter |")
     lines.append("|-------|--------------------:|-----------------|")
-    for name, area in sorted(parachutes.items()):
+    for name, area in sorted(
+        (n, a) for n, a in parachutes.items() if n is not None and n != ""
+    ):
         import math
         diameter_m = 2.0 * math.sqrt(area / math.pi)
         lines.append(f"| {name} | {area:.4f} | {diameter_m:.2f} m |")
@@ -969,6 +1159,11 @@ async def astra_run_simulation(params: SimulationInput) -> str:
     except ValueError as e:
         return f"Error: Invalid launch_datetime: {e}"
 
+    # ASTRA expects naive UTC datetimes throughout; strip tzinfo if present.
+    if launch_dt.tzinfo is not None:
+        from datetime import timezone as _tz
+        launch_dt = launch_dt.astimezone(_tz.utc).replace(tzinfo=None)
+
     # Build kwargs for floatingFlight / cutdown modes
     flight_kwargs: dict = {}
     if params.floating_flight:
@@ -999,8 +1194,21 @@ async def astra_run_simulation(params: SimulationInput) -> str:
 
     try:
         forecast_info = _load_or_refresh_forecast_cache(environment)
-    except Exception as e:
-        return f"Error loading forecast data: {type(e).__name__}: {e}"
+    except Exception as noaa_exc:
+        # NOAA OPeNDAP is retired — fall back to Open-Meteo pressure-level data.
+        logger.warning("NOAA GFS load failed (%s); trying Open-Meteo fallback", noaa_exc)
+        try:
+            om_profile = await _fetch_open_meteo_weather_profile(
+                params.launch_lat, params.launch_lon, launch_dt
+            )
+            forecast_info = _prime_environment_from_open_meteo(environment, om_profile)
+        except Exception as om_exc:
+            return (
+                f"Error loading forecast data: NOAA GFS failed "
+                f"({type(noaa_exc).__name__}: {noaa_exc}); "
+                f"Open-Meteo fallback also failed "
+                f"({type(om_exc).__name__}: {om_exc})"
+            )
 
     try:
         sim = flight(

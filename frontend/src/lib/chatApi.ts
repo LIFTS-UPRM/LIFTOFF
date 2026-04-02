@@ -1,6 +1,7 @@
 export interface ChatApiResponse {
   response: string;
   source: string;
+  tool_calls?: Array<{ name: string; args: Record<string, unknown> }>;
 }
 
 /**
@@ -11,7 +12,8 @@ export async function sendMessage(message: string): Promise<ChatApiResponse> {
   let res: Response;
 
   try {
-    res = await fetch("/api/chat", {
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
+    res = await fetch(`${base}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),

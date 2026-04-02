@@ -43,6 +43,7 @@ export default function ChatPage() {
         role: "assistant",
         content: data.response,
         createdAt: new Date(),
+        toolCalls: data.tool_calls,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {

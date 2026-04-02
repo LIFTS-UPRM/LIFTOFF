@@ -80,21 +80,128 @@
   word-break: break-word;
 }
 
-/* ─── Typing dots ─────────────────────────────────────────────── */
-.typingDots {
+/* ─── Processing badge ────────────────────────────────────────── */
+.processingBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: var(--color-accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  animation: processingPulse 2s ease-in-out infinite;
+}
+
+/* ─── Loading state ───────────────────────────────────────────── */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scanBar {
+  position: relative;
+  height: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.scanLine {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  height: 4px;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  filter: blur(1px);
+  animation: scanAnim 2s linear infinite;
+}
+
+.loadingStep {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  animation: fadeInStep 0.35s var(--ease-out) both;
+}
+
+/* ─── Tool calls ──────────────────────────────────────────────── */
+.toolCalls {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.toolCallsSummary {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
   padding: 2px 0;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
+.toolCallsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.toolCallsChevron {
+  font-size: 9px;
+  color: var(--color-text-muted);
   display: inline-block;
-  animation: typingBounce 1.2s ease-in-out infinite;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+details[open] .toolCallsChevron {
+  transform: rotate(90deg);
+}
+
+.toolCallsLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.toolCallsList {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+}
+
+.toolCallItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 9px;
+  background: var(--color-surface-2);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.toolCallDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.toolCallName {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  flex: 1;
+}
+
+.toolCallArgs {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 }
 
 /* ─── Empty state ─────────────────────────────────────────────── */
