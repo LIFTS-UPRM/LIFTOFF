@@ -1,6 +1,13 @@
+import type { TrajectoryPoint } from "@/types/chat";
+
 export interface ChatApiResponse {
   response: string;
   source: string;
+<<<<<<< Updated upstream
+=======
+  tool_calls?: Array<{ name: string; args: Record<string, unknown> }>;
+  trajectory?: TrajectoryPoint[] | null;
+>>>>>>> Stashed changes
 }
 
 /**

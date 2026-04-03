@@ -43,6 +43,11 @@ export default function ChatPage() {
         role: "assistant",
         content: data.response,
         createdAt: new Date(),
+<<<<<<< Updated upstream
+=======
+        toolCalls: data.tool_calls,
+        trajectory: data.trajectory ?? undefined,
+>>>>>>> Stashed changes
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {

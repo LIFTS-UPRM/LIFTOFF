@@ -209,17 +209,33 @@ ASTRA_TOOLS: list[dict] = [
             },
         },
     },
+]
+
+HAB_PREDICTOR_TOOLS: list[dict] = [
     {
         "type": "function",
         "function": {
-            "name": "astra_run_simulation",
+            "name": "hab_list_hardware",
             "description": (
-                "Run an ASTRA Monte Carlo balloon flight simulation using NOAA GFS forecast data. "
-                "Use this for landing prediction and uncertainty analysis."
+                "Return the full HAB_Predictor hardware catalog: all balloon models, "
+                "parachute models, and supported gas types. "
+                "Use as a combined alternative to astra_list_balloons + astra_list_parachutes."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "hab_get_elevation",
+            "description": (
+                "Look up terrain elevation (metres above sea level) at a given lat/lon "
+                "using OpenTopoData. Use when the launch site elevation is unknown."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+<<<<<<< Updated upstream
                     "launch_lat": {"type": "number", "description": "Launch site latitude in decimal degrees."},
                     "launch_lon": {"type": "number", "description": "Launch site longitude in decimal degrees."},
                     "launch_elevation_m": {
@@ -234,56 +250,138 @@ ASTRA_TOOLS: list[dict] = [
                         "type": "string",
                         "description": "ASTRA balloon model ID.",
                     },
+=======
+                    "lat": {"type": "number", "description": "Latitude in decimal degrees."},
+                    "lon": {"type": "number", "description": "Longitude in decimal degrees."},
+                },
+                "required": ["lat", "lon"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "hab_calculate_nozzle_lift",
+            "description": (
+                "Calculate the nozzle lift (kg) needed to reach a target ascent rate "
+                "for a specific balloon model, payload, and gas type via HAB_Predictor."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "balloon_model": {"type": "string", "description": "Balloon model ID."},
+>>>>>>> Stashed changes
                     "gas_type": {
                         "type": "string",
                         "enum": ["Helium", "Hydrogen"],
                         "description": "Lifting gas type.",
                     },
-                    "nozzle_lift_kg": {
+                    "payload_weight_kg": {"type": "number", "description": "Payload weight in kg."},
+                    "ascent_rate_ms": {
                         "type": "number",
-                        "description": "Nozzle lift in kilograms.",
+                        "description": "Target ascent rate in m/s.",
+                        "default": 5.0,
                     },
-                    "payload_weight_kg": {
-                        "type": "number",
-                        "description": "Total payload train weight in kilograms.",
-                    },
-                    "parachute_model": {
+                },
+                "required": ["balloon_model", "gas_type", "payload_weight_kg"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "hab_calculate_balloon_volume",
+            "description": (
+                "Calculate gas fill volume, gas mass, balloon diameter, and free lift "
+                "via HAB_Predictor."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "balloon_model": {"type": "string", "description": "Balloon model ID."},
+                    "gas_type": {
                         "type": "string",
-                        "description": "Optional ASTRA parachute model.",
+                        "enum": ["Helium", "Hydrogen"],
+                        "description": "Lifting gas type.",
                     },
+                    "nozzle_lift_kg": {"type": "number", "description": "Target nozzle lift in kg."},
+                    "payload_weight_kg": {"type": "number", "description": "Payload weight in kg."},
+                },
+                "required": ["balloon_model", "gas_type", "nozzle_lift_kg", "payload_weight_kg"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "hab_run_simulation",
+            "description": (
+                "Run a HAB_Predictor Monte Carlo balloon trajectory simulation using NOAA GFS data. "
+                "Returns per-run summaries, aggregate stats, a sampled trajectory path, and optional "
+                "SondeHub calibration. Prefer this over astra_run_simulation when SondeHub "
+                "calibration or richer trajectory output is needed."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "launch_lat": {"type": "number", "description": "Launch latitude in decimal degrees."},
+                    "launch_lon": {"type": "number", "description": "Launch longitude in decimal degrees."},
+                    "launch_datetime": {
+                        "type": "string",
+                        "description": "Launch time in ISO 8601 format.",
+                    },
+                    "balloon_model": {"type": "string", "description": "Balloon model ID."},
+                    "gas_type": {
+                        "type": "string",
+                        "enum": ["Helium", "Hydrogen"],
+                        "description": "Lifting gas type.",
+                    },
+                    "nozzle_lift_kg": {"type": "number", "description": "Nozzle lift in kg."},
+                    "payload_weight_kg": {"type": "number", "description": "Payload weight in kg."},
+                    "launch_elevation_m": {
+                        "type": "number",
+                        "description": "Launch elevation in metres (optional; auto-looked-up if omitted).",
+                    },
+                    "parachute_model": {"type": "string", "description": "Optional parachute model ID."},
                     "num_runs": {
                         "type": "integer",
-                        "description": "Number of Monte Carlo runs to execute.",
+                        "description": "Number of Monte Carlo runs (1-20).",
                         "default": 5,
                     },
-                    "floating_flight": {
-                        "type": "boolean",
-                        "description": "Set true for floating balloon flights.",
-                        "default": False,
-                    },
+                    "floating_flight": {"type": "boolean", "default": False},
                     "floating_altitude_m": {
                         "type": "number",
-                        "description": "Target float altitude in metres when floating_flight=true.",
+                        "description": "Target float altitude in metres.",
                     },
-                    "cutdown": {
-                        "type": "boolean",
-                        "description": "Set true for cutdown-enabled flights.",
-                        "default": False,
-                    },
+                    "cutdown": {"type": "boolean", "default": False},
                     "cutdown_altitude_m": {
                         "type": "number",
-                        "description": "Trigger altitude in metres when cutdown=true.",
+                        "description": "Cutdown trigger altitude in metres.",
                     },
                     "force_low_res": {
                         "type": "boolean",
-                        "description": "Use lower-resolution GFS data for faster simulations.",
                         "default": False,
+                        "description": "Use lower-resolution GFS for faster simulations.",
+                    },
+                    "compare_with_sondehub": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Fetch SondeHub independent prediction for comparison.",
+                    },
+                    "adjust_with_sondehub": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Apply SondeHub-based calibration to the trajectory.",
+                    },
+                    "sondehub_adjustment_weight": {
+                        "type": "number",
+                        "default": 0.5,
+                        "description": "Weight (0-1) for SondeHub calibration blend.",
                     },
                 },
                 "required": [
                     "launch_lat",
                     "launch_lon",
-                    "launch_elevation_m",
                     "launch_datetime",
                     "balloon_model",
                     "gas_type",
@@ -295,7 +393,11 @@ ASTRA_TOOLS: list[dict] = [
     },
 ]
 
+<<<<<<< Updated upstream
 ALL_TOOLS = WEATHER_TOOLS + NOTAM_TOOLS + ASTRA_TOOLS
+=======
+ALL_TOOLS = WEATHER_TOOLS + AIRSPACE_TOOLS + ASTRA_TOOLS + HAB_PREDICTOR_TOOLS
+>>>>>>> Stashed changes
 
 
 def get_tools() -> list[dict]:
@@ -316,17 +418,20 @@ Guidelines:
 - Call check_notam_airspace when the user asks about airspace clearance or launch safety.
 - Call astra_list_balloons and astra_list_parachutes when hardware selection is unclear.
 - Call astra_calculate_nozzle_lift before astra_run_simulation when the user gives a target ascent rate but not a nozzle lift.
-- Call astra_run_simulation to compute landing prediction and uncertainty; it pulls NOAA GFS data itself, so do not call get_winds_aloft first unless the user separately wants the wind profile.
+- Call hab_run_simulation to compute landing prediction and uncertainty; it pulls NOAA GFS data itself, so do not call get_winds_aloft first unless the user separately wants the wind profile.
 - Lead with the overall GO / CAUTION / NO-GO recommendation.
 - Explicitly name threshold violations (e.g., "Surface wind 8.2 m/s exceeds the 7.0 m/s CAUTION threshold").
 - Report NOTAM clearance_status clearly; MANUAL_CHECK_REQUIRED always requires human review.
 - Include observation_links when available from tool results.
 - Be concise. Use short paragraphs and bullet points.
+- Use hab_get_elevation when the launch site elevation is unknown before running a simulation.
+- Use hab_list_hardware as a combined alternative to calling astra_list_balloons and astra_list_parachutes separately.
 """
 
 # ── Tool dispatcher ───────────────────────────────────────────────────────────
 
 async def execute_tool(name: str, tool_input: dict) -> str:
+<<<<<<< Updated upstream
     """Execute any named tool and return a JSON string result."""
     from mcp_servers.astra_server import (
         astra_calculate_balloon_volume,
@@ -358,12 +463,22 @@ async def execute_tool(name: str, tool_input: dict) -> str:
 
         return raw_result
 
+=======
+    """Execute any named tool and return a JSON string result.
+
+    Each import is scoped to its branch so a failure in one server (e.g. a
+    missing vendored dependency) cannot prevent other servers from loading.
+    """
+>>>>>>> Stashed changes
     if name == "get_surface_weather":
+        from mcp_servers.weather_server import get_surface_weather
         result = await get_surface_weather(**tool_input)
 
     elif name == "get_winds_aloft":
+        from mcp_servers.weather_server import get_winds_aloft
         result = await get_winds_aloft(**tool_input)
 
+<<<<<<< Updated upstream
     elif name == "check_notam_airspace":
         s = get_settings()
         result = await check_notam_airspace(
@@ -371,21 +486,47 @@ async def execute_tool(name: str, tool_input: dict) -> str:
             faa_client_id=s.faa_client_id,
             faa_client_secret=s.faa_client_secret,
         )
+=======
+    elif name == "check_airspace_hazards":
+        from mcp_servers.notam_server import check_airspace_hazards
+        result = await check_airspace_hazards(**tool_input)
+>>>>>>> Stashed changes
 
     elif name == "astra_list_balloons":
+        from mcp_servers.astra_server import astra_list_balloons
         result = await astra_list_balloons(**tool_input)
 
     elif name == "astra_list_parachutes":
+        from mcp_servers.astra_server import astra_list_parachutes
         result = await astra_list_parachutes(**tool_input)
 
     elif name == "astra_calculate_nozzle_lift":
+        from mcp_servers.astra_server import astra_calculate_nozzle_lift
         result = await astra_calculate_nozzle_lift(**tool_input)
 
     elif name == "astra_calculate_balloon_volume":
+        from mcp_servers.astra_server import astra_calculate_balloon_volume
         result = await astra_calculate_balloon_volume(**tool_input)
 
-    elif name == "astra_run_simulation":
-        result = await astra_run_simulation(**tool_input)
+    elif name == "hab_list_hardware":
+        from mcp_servers.hab_predictor_server import hab_list_hardware
+        result = await hab_list_hardware()
+
+    elif name == "hab_get_elevation":
+        from mcp_servers.hab_predictor_server import hab_get_elevation
+        result = await hab_get_elevation(**tool_input)
+
+    elif name == "hab_calculate_nozzle_lift":
+        from mcp_servers.hab_predictor_server import hab_calculate_nozzle_lift
+        result = await hab_calculate_nozzle_lift(**tool_input)
+
+    elif name == "hab_calculate_balloon_volume":
+        from mcp_servers.hab_predictor_server import hab_calculate_balloon_volume
+        result = await hab_calculate_balloon_volume(**tool_input)
+
+    elif name == "hab_run_simulation":
+        from mcp_servers.hab_predictor_server import hab_run_simulation
+        result = await hab_run_simulation(**tool_input)
 
     else:
         result = {

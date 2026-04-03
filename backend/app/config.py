@@ -23,6 +23,7 @@ class Settings:
     faa_client_id: str
     faa_client_secret: str
     astra_gfs_cache_dir: str
+    hab_predictor_url: str
 
 
 @lru_cache(maxsize=1)
@@ -44,4 +45,5 @@ def get_settings() -> Settings:
             "ASTRA_GFS_CACHE_DIR",
             str(default_astra_cache_dir),
         ),
+        hab_predictor_url=os.getenv("HAB_PREDICTOR_URL", "http://localhost:5000"),
     )

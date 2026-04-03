@@ -7,7 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.logging import configure_logging
+<<<<<<< Updated upstream
 from app.schemas import ChatRequest, ChatResponse
+=======
+from app.schemas import ChatRequest, ChatResponse, ToolCallRecord, TrajectoryPoint
+>>>>>>> Stashed changes
 
 
 settings = get_settings()
@@ -40,7 +44,176 @@ async def health() -> dict[str, str]:
 @app.post("/chat", response_model=ChatResponse)
 async def chat(payload: ChatRequest) -> ChatResponse:
     logger.info("Received chat message (%d chars)", len(payload.message))
+<<<<<<< Updated upstream
     return ChatResponse(
         response="This is a mock response from STRATOS backend.",
         source="mock",
     )
+=======
+
+    tool_calls_log: list[ToolCallRecord] = []
+    trajectory_data: list[TrajectoryPoint] | None = None
+    try:
+        provider = OpenAIProvider()
+        client = provider.get_client()
+
+        messages: list[dict] = [
+            {"role": "system", "content": provider.get_system_prompt()},
+            {"role": "user", "content": payload.message},
+        ]
+        last_tool_name = "llm"
+        max_steps = 10
+        seen_calls: set[tuple[str, str]] = set()
+
+        for step in range(max_steps):
+            logger.info("LLM step %d", step + 1)
+
+            response = await client.chat.completions.create(
+                model=provider.get_model(),
+                messages=messages,
+                tools=provider.get_tools(),
+                tool_choice="auto",
+            )
+
+            assistant_message = response.choices[0].message
+
+            logger.info("Assistant content: %s", assistant_message.content)
+            logger.info("Assistant tool calls: %s", assistant_message.tool_calls)
+
+            # If no tool calls, we are done
+            if not assistant_message.tool_calls:
+                final_text = assistant_message.content or "No response returned."
+                source = "llm_with_tools" if last_tool_name != "llm" else "llm"
+                return ChatResponse(
+                    response=final_text,
+                    source=source,
+                    tool_calls=tool_calls_log,
+                    trajectory=trajectory_data,
+                )
+
+            # Append assistant tool-call message
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": assistant_message.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": tc.type,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in assistant_message.tool_calls
+                    ],
+                }
+            )
+
+            # Execute all requested tool calls
+            for tool_call in assistant_message.tool_calls:
+                tool_name = tool_call.function.name
+                last_tool_name = tool_name
+                
+
+
+                try:
+                    tool_args = json.loads(tool_call.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    logger.exception("Invalid JSON arguments for tool %s", tool_name)
+                    return ChatResponse(
+                        response=f"Tool call failed: invalid JSON arguments for {tool_name}.",
+                        source="tool_error",
+                        tool_calls=tool_calls_log,
+                    )
+
+                tool_key = (tool_name, json.dumps(tool_args, sort_keys=True))
+                if tool_key in seen_calls:
+                    logger.warning("Duplicate tool call detected: %s %s", tool_name, tool_args)
+
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": json.dumps(
+                                {
+                                    "error": f"Duplicate tool call detected for {tool_name}. Do not retry with the same arguments. Provide the final answer."
+                                }
+                            ),
+                        }
+                    )
+                    continue
+
+                seen_calls.add(tool_key)
+                tool_calls_log.append(ToolCallRecord(name=tool_name, args=tool_args))
+
+                logger.info("Tool requested: %s", tool_name)
+                logger.info("Tool args: %s", tool_args)
+                
+                try:
+                    # Use longer timeout for simulation tools (up to 2 minutes)
+                    timeout = 120 if tool_name in ("astra_run_simulation", "hab_run_simulation") else 30
+                    tool_result = await asyncio.wait_for(
+                        execute_tool(tool_name, tool_args),
+                        timeout=timeout
+                    )
+
+                    # execute_tool returns a JSON string, so inspect it
+                    try:
+                        parsed_result = json.loads(tool_result)
+                        if isinstance(parsed_result, dict) and parsed_result.get("error"):
+                            logger.warning("Tool returned error payload: %s", tool_name)
+                    except json.JSONDecodeError:
+                        # If it's not JSON, just leave it alone
+                        parsed_result = None
+
+                except asyncio.TimeoutError:
+                    logger.warning("Tool execution timed out: %s", tool_name)
+                    tool_result = json.dumps({"error": f"{tool_name} timed out after 120 seconds"})
+
+                except Exception as e:
+                    logger.exception("Tool execution failed: %s", tool_name)
+                    tool_result = json.dumps({"error": f"{tool_name} failed: {str(e)}"})
+
+                # Extract trajectory_run1 from any simulation tool for frontend map rendering
+                if tool_name in ("astra_run_simulation", "hab_run_simulation") and trajectory_data is None:
+                    try:
+                        sim_result = json.loads(tool_result)
+                        raw_pts = sim_result.get("trajectory_run1") or []
+                        if raw_pts:
+                            trajectory_data = [
+                                TrajectoryPoint(
+                                    lat=p["lat"],
+                                    # ASTRA uses "lon"; HAB_Predictor uses "lng"
+                                    lng=p.get("lng") or p.get("lon") or 0.0,
+                                    # ASTRA uses "alt_m"; HAB_Predictor uses "alt"
+                                    alt=p.get("alt") or p.get("alt_m") or 0.0,
+                                )
+                                for p in raw_pts
+                            ]
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        pass
+
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": tool_result,
+                    }
+                )
+
+        return ChatResponse(
+            response="Tool-calling loop reached the maximum number of steps.",
+            source="tool_loop_limit",
+            tool_calls=tool_calls_log,
+            trajectory=trajectory_data,
+        )
+
+    except Exception as e:
+        logger.exception("Unhandled error in chat endpoint")
+        return ChatResponse(
+            response=f"Server error: {str(e)}",
+            source="error",
+            tool_calls=tool_calls_log,
+        )
+>>>>>>> Stashed changes

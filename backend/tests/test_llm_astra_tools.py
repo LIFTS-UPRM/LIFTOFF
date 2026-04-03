@@ -19,11 +19,16 @@ def test_get_tools_exposes_astra_and_removes_old_trajectory_tools() -> None:
         "astra_list_parachutes",
         "astra_calculate_nozzle_lift",
         "astra_calculate_balloon_volume",
-        "astra_run_simulation",
+        "hab_run_simulation",
     ):
         assert expected in tool_names
 
-    for removed in ("predict_standard", "health_check", "get_supported_profiles"):
+    for removed in (
+        "predict_standard",
+        "health_check",
+        "get_supported_profiles",
+        "astra_run_simulation",
+    ):
         assert removed not in tool_names
 
 
@@ -48,17 +53,17 @@ def test_execute_tool_normalizes_json_response(monkeypatch) -> None:
 
 
 def test_execute_tool_normalizes_error_string(monkeypatch) -> None:
-    from mcp_servers import astra_server
+    from mcp_servers import hab_predictor_server
 
     async def fake_run_simulation(**_: object) -> str:
         return "Error loading forecast data: RuntimeError: boom"
 
-    monkeypatch.setattr(astra_server, "astra_run_simulation", fake_run_simulation)
+    monkeypatch.setattr(hab_predictor_server, "hab_run_simulation", fake_run_simulation)
 
-    payload = json.loads(asyncio.run(llm.execute_tool("astra_run_simulation", {})))
+    payload = json.loads(asyncio.run(llm.execute_tool("hab_run_simulation", {})))
 
     assert payload["status"] == "error"
-    assert payload["tool"] == "astra_run_simulation"
+    assert payload["tool"] == "hab_run_simulation"
     assert "boom" in payload["message"]
 
 
