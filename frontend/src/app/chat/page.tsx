@@ -37,13 +37,14 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const data = await sendMessage(content);
+      const data = await sendMessage(content, messages);
       const assistantMessage: Message = {
         id: generateId(),
         role: "assistant",
         content: data.response,
         createdAt: new Date(),
         toolCalls: data.tool_calls,
+        trajectoryArtifact: data.trajectory_artifact,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
@@ -59,7 +60,7 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [messages]);
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
