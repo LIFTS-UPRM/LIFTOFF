@@ -1,5 +1,7 @@
 export type MessageRole = "user" | "assistant";
 
+export type McpToolGroupId = "trajectory" | "weather" | "airspace";
+
 export interface ToolCallRecord {
   name: string;
   args: Record<string, unknown>;

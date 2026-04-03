@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+McpToolGroupId = Literal["trajectory", "weather", "airspace"]
 
 
 class ToolCallRecord(BaseModel):
@@ -19,6 +22,7 @@ class ChatHistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[ChatHistoryMessage] = Field(default_factory=list)
+    enabled_tool_groups: list[McpToolGroupId] | None = None
 
 
 class TrajectoryArtifactPoint(BaseModel):

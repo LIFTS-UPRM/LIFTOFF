@@ -1,4 +1,4 @@
-import type { Message, TrajectoryArtifact } from "@/types/chat";
+import type { McpToolGroupId, Message, TrajectoryArtifact } from "@/types/chat";
 
 export interface ChatApiResponse {
   response: string;
@@ -14,6 +14,7 @@ export interface ChatApiResponse {
 export async function sendMessage(
   message: string,
   history: Message[] = [],
+  enabledToolGroups?: McpToolGroupId[],
 ): Promise<ChatApiResponse> {
   let res: Response;
 
@@ -25,6 +26,7 @@ export async function sendMessage(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
+        enabled_tool_groups: enabledToolGroups,
         history: history.map((item) => ({
           role: item.role,
           content: item.content,

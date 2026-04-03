@@ -86,12 +86,16 @@ async def chat(payload: ChatRequest) -> ChatResponse:
         for step in range(max_steps):
             logger.info("LLM step %d", step + 1)
 
-            response = await client.chat.completions.create(
-                model=provider.get_model(),
-                messages=messages,
-                tools=provider.get_tools(),
-                tool_choice="auto",
-            )
+            completion_kwargs = {
+                "model": provider.get_model(),
+                "messages": messages,
+            }
+            enabled_tools = provider.get_tools(payload.enabled_tool_groups)
+            if enabled_tools:
+                completion_kwargs["tools"] = enabled_tools
+                completion_kwargs["tool_choice"] = "auto"
+
+            response = await client.chat.completions.create(**completion_kwargs)
 
             assistant_message = response.choices[0].message
 

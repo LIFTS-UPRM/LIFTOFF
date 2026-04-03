@@ -27,6 +27,22 @@ def test_get_tools_exposes_astra_and_removes_old_trajectory_tools() -> None:
         assert removed not in tool_names
 
 
+def test_get_tools_filters_by_enabled_group() -> None:
+    tool_names = [
+        tool["function"]["name"]
+        for tool in llm.get_tools(["trajectory", "airspace"])
+    ]
+
+    assert "astra_run_simulation" in tool_names
+    assert "check_airspace_hazards" in tool_names
+    assert "get_surface_weather" not in tool_names
+    assert "get_winds_aloft" not in tool_names
+
+
+def test_get_tools_returns_no_schemas_when_no_groups_enabled() -> None:
+    assert llm.get_tools([]) == []
+
+
 def test_astra_wrapper_import_smoke() -> None:
     from mcp_servers import astra_server
 
