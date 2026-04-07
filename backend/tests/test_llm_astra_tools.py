@@ -43,6 +43,12 @@ def test_get_tools_returns_no_schemas_when_no_groups_enabled() -> None:
     assert llm.get_tools([]) == []
 
 
+def test_system_prompt_uses_stratos_branding() -> None:
+    assert "STRATOS AI" in llm.SYSTEM_PROMPT
+    assert "mission copilot" in llm.SYSTEM_PROMPT
+    assert "LIFTOFF" not in llm.SYSTEM_PROMPT
+
+
 def test_astra_wrapper_import_smoke() -> None:
     from mcp_servers import astra_server
 

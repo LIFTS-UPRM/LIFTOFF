@@ -22,8 +22,9 @@ It is designed to replace fragmented HAB workflows with one integrated system th
 6. [MCP Tooling Reference](#mcp-tooling-reference)
 7. [Backend API Quick Start](#backend-api-quick-start)
 8. [Contributing](#contributing)
-9. [Status](#status)
-10. [Credits](#credits)
+9. [License](#license)
+10. [Status](#status)
+11. [Credits](#credits)
 
 ---
 
@@ -309,6 +310,18 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full branch strategy, PR workflow
 
 ---
 
+## License
+
+STRATOS is licensed under the **ISC License**. See the top-level [LICENSE](LICENSE) file.
+
+This repository also references or vendors third-party projects that remain under their own licenses:
+
+- **LEANN** — MIT License
+- **ASTRA / HAB_Predictor** — BSD 3-Clause License
+- **Tawhiri** — GNU GPL v3.0
+
+---
+
 ## Status
 
 Concept in development.
@@ -322,5 +335,27 @@ This project builds upon and is inspired by existing work in the high-altitude b
 - Mission Support Telemetry  
 
   <https://github.com/INSOJO/mission-support-telemetry>  
+
+- LEANN  
+
+  Local RAG indexing backend planned for STRATOS document retrieval flows.  
+  Repository: <https://github.com/yichuan-w/LEANN>  
+  License: MIT  
+
+- ASTRA
+
+  Balloon trajectory simulation foundation used by STRATOS through the vendored
+  HAB_Predictor fork and upstream ASTRA simulator work.  
+  Upstream ASTRA: <https://github.com/sobester/astra_simulator>  
+  Vendored fork: <https://github.com/LIFTS-UPRM/HAB_Predictor>  
+  License: BSD 3-Clause  
+
+- Tawhiri  
+
+  Landing prediction system used by the broader HAB ecosystem and referenced by
+  STRATOS calibration/comparison flows through SondeHub Tawhiri data.  
+  Repository: <https://github.com/cuspaceflight/tawhiri>  
+  Project site: <http://predict.habhub.org/>  
+  License: GNU GPL v3.0  
 
 Additional credits and acknowledgments will be added as STRATOS evolves.
