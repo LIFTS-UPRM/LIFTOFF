@@ -24,7 +24,7 @@ configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name)
-TRUSTED_HISTORY_ROLES = frozenset({"user", "assistant"})
+ALLOWED_HISTORY_ROLES = frozenset({"user", "assistant"})
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,7 +48,7 @@ async def health() -> dict[str, str]:
 
 
 def _sanitize_history_message(message: ChatHistoryMessage) -> dict[str, str] | None:
-    if message.role not in TRUSTED_HISTORY_ROLES:
+    if message.role not in ALLOWED_HISTORY_ROLES:
         return None
 
     content = message.content.strip()
