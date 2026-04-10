@@ -134,9 +134,6 @@ async def chat(payload: ChatRequest) -> ChatResponse:
             for tool_call in assistant_message.tool_calls:
                 tool_name = tool_call.function.name
                 last_tool_name = tool_name
-                
-
-
                 try:
                     tool_args = json.loads(tool_call.function.arguments or "{}")
                 except json.JSONDecodeError:
