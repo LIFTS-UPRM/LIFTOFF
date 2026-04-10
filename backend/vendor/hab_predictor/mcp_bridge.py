@@ -131,14 +131,14 @@ def main() -> int:
         payload = json.loads(args.payload)
         stdout_buffer = io.StringIO()
         with contextlib.redirect_stdout(stdout_buffer):
-            result = _dispatch(args.tool, payload)
+            _dispatch(args.tool, payload)
         progress_output = stdout_buffer.getvalue().strip()
         if progress_output:
             print(progress_output, file=sys.stderr)
+        print(json.dumps({"status": "ok"}))
     except Exception as exc:
-        result = f"Error: {type(exc).__name__}: {exc}"
+        print(json.dumps({"status": "error", "error_type": type(exc).__name__}))
 
-    print(result)
     return 0
 
 
