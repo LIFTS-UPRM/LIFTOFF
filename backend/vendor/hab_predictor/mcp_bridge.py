@@ -97,6 +97,14 @@ def _calculate_balloon_volume(payload: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _sanitize_simulation_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": result.get("status", "success"),
+        "num_runs": result.get("num_runs", 0),
+        "message": "Simulation completed. Detailed output omitted from bridge response.",
+    }
+
+
 def _dispatch(tool_name: str, payload: dict[str, Any]) -> str:
     if tool_name == "astra_list_balloons":
         if payload.get("response_format", "json") == "markdown":
@@ -115,7 +123,8 @@ def _dispatch(tool_name: str, payload: dict[str, Any]) -> str:
         return json.dumps(_calculate_balloon_volume(payload), indent=2)
 
     if tool_name == "astra_run_simulation":
-        return json.dumps(hab_app.run_simulation(payload), indent=2, default=str)
+        simulation_result = hab_app.run_simulation(payload)
+        return json.dumps(_sanitize_simulation_result(simulation_result), indent=2, default=str)
 
     raise ValueError(f"Unknown tool: {tool_name}")
 
