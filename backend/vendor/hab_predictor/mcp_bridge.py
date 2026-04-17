@@ -103,11 +103,31 @@ def _calculate_balloon_volume(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _sanitize_simulation_result(result: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "status": result.get("status", "success"),
-        "num_runs": result.get("num_runs", 0),
-        "message": "Simulation completed. Detailed output omitted from bridge response.",
-    }
+    sanitized = {}
+    for key in (
+        "status",
+        "launch",
+        "config",
+        "num_runs",
+        "forecast",
+        "runs",
+        "aggregate",
+        "trajectory_run1",
+        "trajectory_run1_raw",
+        "sondehub",
+        "trajectory_artifact",
+    ):
+        value = result.get(key)
+        if value is not None:
+            sanitized[key] = value
+
+    sanitized.setdefault("status", "success")
+    sanitized.setdefault("num_runs", 0)
+    sanitized.setdefault(
+        "message",
+        "Simulation completed. Detailed output omitted from bridge response.",
+    )
+    return sanitized
 
 
 def _dispatch(tool_name: str, payload: dict[str, Any]) -> str:

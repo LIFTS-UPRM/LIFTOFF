@@ -326,3 +326,77 @@ def test_active_loop_model_tool_calls_remain_authoritative(monkeypatch) -> None:
         "tool_name": "get_surface_weather",
         "trust": "untrusted",
     }
+
+
+def test_chat_returns_trajectory_artifact_when_simulation_succeeds(monkeypatch) -> None:
+    FakeProvider.completions = FakeCompletions(
+        responses=[
+            make_message(
+                content="",
+                tool_calls=[
+                    make_tool_call(
+                        call_id="call_trajectory_1",
+                        name="astra_run_simulation",
+                        arguments={"launch_lat": 18.2, "launch_lon": -67.1},
+                    )
+                ],
+            ),
+            make_message(content="Trajectory complete.", tool_calls=None),
+        ]
+    )
+
+    async def fake_execute_tool(name: str, tool_input: dict) -> str:
+        assert name == "astra_run_simulation"
+        assert tool_input == {"launch_lat": 18.2, "launch_lon": -67.1}
+        return json.dumps(
+            {
+                "status": "success",
+                "trajectory_artifact": {
+                    "launch": {
+                        "lat": 18.2,
+                        "lon": -67.1,
+                        "alt_m": 12.0,
+                        "time_s": 0.0,
+                    },
+                    "mean_trajectory": [
+                        {"lat": 18.2, "lon": -67.1, "alt_m": 12.0, "time_s": 0.0},
+                        {"lat": 18.3, "lon": -67.0, "alt_m": 30000.0, "time_s": 2000.0},
+                    ],
+                    "mean_burst": {
+                        "lat": 18.3,
+                        "lon": -67.0,
+                        "alt_m": 30000.0,
+                        "time_s": 2000.0,
+                    },
+                    "mean_landing": {
+                        "lat": 18.4,
+                        "lon": -66.9,
+                        "alt_m": 8.0,
+                        "time_s": 5000.0,
+                    },
+                    "landing_uncertainty_sigma_m": 1200.0,
+                },
+            }
+        )
+
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+    monkeypatch.setattr("app.main.execute_tool", fake_execute_tool)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "Run the trajectory simulation",
+            "enabled_tool_groups": ["trajectory"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["response"] == "Trajectory complete."
+    assert body["source"] == "llm_with_tools"
+    assert body["tool_calls"] == [
+        {"name": "astra_run_simulation", "args": {"launch_lat": 18.2, "launch_lon": -67.1}}
+    ]
+    assert body["trajectory_artifact"]["launch"]["lat"] == 18.2
+    assert body["trajectory_artifact"]["mean_landing"]["lon"] == -66.9
+    assert body["trajectory_artifact"]["landing_uncertainty_sigma_m"] == 1200.0
