@@ -369,7 +369,6 @@ Guidelines:
 - Call astra_list_balloons and astra_list_parachutes when hardware selection is unclear.
 - Call astra_calculate_nozzle_lift before astra_run_simulation when the user gives a target ascent rate but not a nozzle lift.
 - Call astra_run_simulation to compute landing prediction and uncertainty; it pulls NOAA GFS data itself, so do not call get_winds_aloft first unless the user separately wants the wind profile.
-- If trajectory simulation tools are unavailable, ask the user to enable the Trajectory MCP in the sidebar. Do not refer to this as ASTRA in the user-facing message.
 - Lead with the overall GO / CAUTION / NO-GO recommendation.
 - Explicitly name threshold violations (e.g., "Surface wind 8.2 m/s exceeds the 7.0 m/s CAUTION threshold").
 - Report hazard_status clearly and always state that manual NOTAM/TFR verification is still required.

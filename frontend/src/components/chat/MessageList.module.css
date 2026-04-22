@@ -51,8 +51,141 @@
   font-size: 14px;
   line-height: 1.7;
   color: var(--color-text-primary);
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.assistantText > *:first-child {
+  margin-top: 0;
+}
+
+.assistantText > *:last-child {
+  margin-bottom: 0;
+}
+
+.assistantText p,
+.assistantText ul,
+.assistantText ol,
+.assistantText pre,
+.assistantText blockquote,
+.assistantText table,
+.assistantText hr {
+  margin: 0 0 12px;
+}
+
+.assistantText h1,
+.assistantText h2,
+.assistantText h3,
+.assistantText h4 {
+  margin: 18px 0 10px;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.assistantText h1 {
+  font-size: 20px;
+}
+
+.assistantText h2 {
+  font-size: 17px;
+}
+
+.assistantText h3,
+.assistantText h4 {
+  font-size: 15px;
+}
+
+.assistantText ul,
+.assistantText ol {
+  padding-left: 20px;
+}
+
+.assistantText li + li {
+  margin-top: 4px;
+}
+
+.assistantText li > ul,
+.assistantText li > ol {
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.assistantText a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.assistantText strong {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.assistantText code {
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+}
+
+.assistantText pre {
+  overflow-x: auto;
+  padding: 12px 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+}
+
+.assistantText pre code {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.assistantText blockquote {
+  padding: 10px 14px;
+  border-left: 3px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-text-secondary);
+  border-radius: 0 10px 10px 0;
+}
+
+.assistantText hr {
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.assistantText table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+}
+
+.assistantText th,
+.assistantText td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.assistantText th {
+  background: var(--color-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.assistantText tr:last-child td {
+  border-bottom: 0;
 }
 
 /* ─── Trajectory artifact ───────────────────────────────────── */

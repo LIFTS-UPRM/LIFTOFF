@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Message, ToolCallRecord } from "@/types/chat";
 import styles from "./MessageList.module.css";
 
@@ -91,7 +93,18 @@ function AssistantMessage({ message }: { message: Message }) {
         <span className={styles.assistantLabel}>STRATOS AI</span>
         <span className={styles.assistantTime}>{formatUtcTime(message.createdAt)}</span>
       </div>
-      <p className={styles.assistantText}>{message.content}</p>
+      <div className={styles.assistantText}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ node: _node, ...props }) => (
+              <a {...props} target="_blank" rel="noreferrer" />
+            ),
+          }}
+        >
+          {message.content}
+        </ReactMarkdown>
+      </div>
       {message.trajectoryArtifact && (
         <TrajectoryArtifactMap artifact={message.trajectoryArtifact} />
       )}
