@@ -7,6 +7,10 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.main import app
+
 from app.schemas import (
     CHAT_HISTORY_MAX_ITEMS,
     CHAT_HISTORY_MESSAGE_MAX_CHARS,
@@ -14,12 +18,6 @@ from app.schemas import (
     CHAT_PAYLOAD_MAX_BYTES,
     CHAT_PAYLOAD_MAX_DEPTH,
 )
-
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from app.main import app
-
 
 def decode_envelope(message: dict) -> dict:
     return json.loads(message["content"])
