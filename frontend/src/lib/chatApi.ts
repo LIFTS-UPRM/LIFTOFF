@@ -7,6 +7,24 @@ export interface ChatApiResponse {
   trajectory_artifact?: TrajectoryArtifact | null;
 }
 
+function getChatEndpoint(): string {
+  const configuredBase = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+  if (configuredBase) {
+    return `${configuredBase.replace(/\/$/, "")}/chat`;
+  }
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+    const isLocalDevHost = hostname === "localhost" || hostname === "127.0.0.1";
+
+    if (isLocalDevHost && (protocol === "http:" || protocol === "https:")) {
+      return "http://127.0.0.1:8000/chat";
+    }
+  }
+
+  return "/api/chat";
+}
+
 /**
  * Send a message to the STRATOS backend and return the response.
  * Throws an Error with a user-facing message on network or server failure.
@@ -18,8 +36,7 @@ export async function sendMessage(
   let res: Response;
 
   try {
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-    const endpoint = base ? `${base}/chat` : "/api/chat";
+    const endpoint = getChatEndpoint();
     res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
