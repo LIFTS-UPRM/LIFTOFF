@@ -12,7 +12,7 @@ import styles from "./ChatPage.module.css";
 
 const SUGGESTIONS = [
   "Run trajectory analysis with current wind data",
-  "Show active NOTAMs for the launch region",
+  "Show the no-flight zone for this balloon launch",
   "What's our go/no-go status for the launch window?",
 ];
 
