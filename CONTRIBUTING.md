@@ -49,7 +49,7 @@ Thank you for contributing to STRATOS. This document covers the branch strategy,
 
 ## CI Checks
 
-CI runs automatically on every pull request targeting `main` and on every push to non-main branches. Two workflows run in parallel:
+CI runs automatically on every pull request targeting `main` and on every push to non-main branches. Three workflows run in parallel:
 
 ### Frontend CI (`frontend-ci.yml`)
 
@@ -68,7 +68,16 @@ CI runs automatically on every pull request targeting `main` and on every push t
 | Import validation | `python -c "import main"` | The app cannot be imported (broken imports, syntax errors) |
 | Tests | `pytest` | Any test fails (runs only if a `tests/` directory exists) |
 
-A PR **cannot be merged** if either CI job is failing.
+### Security CI (`security-ci.yml`)
+
+| Step | Command | Fails if... |
+|------|---------|-------------|
+| Backend security scan | `bandit -r app mcp_servers main.py llm.py -x tests,vendor --skip B104 --severity-level medium --confidence-level medium` | Bandit finds a medium-or-higher confidence security issue in STRATOS backend code |
+| Frontend dependency audit | `npm audit --audit-level=high` | npm reports a high-or-critical advisory for installed frontend dependencies |
+
+Security checks intentionally scan STRATOS-owned backend code and exclude `backend/vendor/` so vendored HAB predictor code does not drown out actionable findings. Bandit `B104` is skipped because the API bind host is deployment-configurable and currently defaults to `0.0.0.0`. Add new suppressions only when a finding is reviewed and intentional.
+
+A PR **cannot be merged** if any CI job is failing.
 
 ---
 
@@ -78,7 +87,7 @@ A PR **cannot be merged** if either CI job is failing.
 - At least 1 approving review required
 - Stale approvals dismissed when new commits are pushed
 - All conversations must be resolved before merge
-- Status checks (`Frontend CI` and `Backend CI`) must pass before merge
+- Status checks (`Frontend CI`, `Backend CI`, and `Security CI`) must pass before merge
 - Direct pushes to `main` are blocked
 
 ---
@@ -103,9 +112,26 @@ pip install -r requirements.txt -r requirements-dev.txt
 uvicorn main:app --reload   # Dev server at http://localhost:8000
 ruff check .                # Lint
 pytest                      # Run tests (when tests exist)
+bandit -r app mcp_servers main.py llm.py -x tests,vendor --skip B104 --severity-level medium --confidence-level medium
 ```
 
 Copy `.env.example` to `.env` and fill in your local values before running the backend.
+
+### Security checks
+
+Run the same security checks as CI before opening a PR:
+
+```bash
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+bandit -r app mcp_servers main.py llm.py -x tests,vendor --skip B104 --severity-level medium --confidence-level medium
+```
+
+```bash
+cd frontend
+npm ci
+npm audit --audit-level=high
+```
 
 ---
 
