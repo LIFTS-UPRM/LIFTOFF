@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import abc
 import json
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from openai import AsyncOpenAI
 
@@ -381,9 +381,14 @@ class LLMProvider(abc.ABC):
 
 
 class OpenAIProvider(LLMProvider):
+    _shared_client: ClassVar[AsyncOpenAI | None] = None
+
     def __init__(self) -> None:
         s = get_settings()
-        self._client = AsyncOpenAI(api_key=s.llm_api_key)
+        if OpenAIProvider._shared_client is None:
+            OpenAIProvider._shared_client = AsyncOpenAI(api_key=s.llm_api_key)
+
+        self._client = OpenAIProvider._shared_client
         self._model = s.llm_model
 
     def get_client(self) -> AsyncOpenAI:

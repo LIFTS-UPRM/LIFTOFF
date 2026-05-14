@@ -317,6 +317,42 @@ The `/chat` endpoint enforces request limits to prevent oversized prompts and ab
 
 Oversized, malformed, or deeply nested chat requests return clear 4xx responses before prompt assembly or LLM calls.
 
+### Normal Chat Latency Optimization
+
+The normal chat bottleneck was the model request payload: non-simulation
+messages could still send weather, airspace, and trajectory tool schemas when
+MCP tool groups were enabled. That increases request serialization, upload size,
+prompt-processing work, and time before the model can produce a useful answer.
+Each chat request also created a new `AsyncOpenAI` client, preventing connection
+pooling from helping follow-up turns.
+
+Optimizations:
+
+- Chat now applies lightweight backend intent routing before the model request.
+  Plain conversational turns send no tool schemas. Weather, airspace, and
+  SondeHub trajectory schemas are included only when the current message contains
+  matching operational intent and the group is enabled.
+- `OpenAIProvider` reuses a shared `AsyncOpenAI` client so normal chat can reuse
+  the underlying HTTP connection pool across requests.
+- The chat endpoint logs selected tool groups, per-step LLM latency, total chat
+  latency, LLM step count, and tool-call count for before/after comparison.
+
+Validation:
+
+- `backend/tests/test_chat_tool_groups.py` verifies that normal chat omits tool
+  schemas even when all groups are enabled, while operational requests still
+  receive the relevant tool group.
+- `backend/tests/test_llm_sondehub_tools.py` verifies that the OpenAI client is
+  reused across provider instances.
+- Local schema payload measurement drops a plain chat turn from a 5,310-character
+  all-tools schema payload to `[]`, removing about 5.3 KB before the model
+  request leaves the backend.
+
+Tradeoff: intent routing intentionally favors faster normal chat. If a request
+does not include weather, airspace, or trajectory language, the first model call
+will answer directly instead of discovering tool use from the full schema. Users
+can still trigger tools by asking for those operational capabilities explicitly.
+
 ---
 
 ## Contributing

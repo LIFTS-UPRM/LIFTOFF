@@ -47,7 +47,6 @@ jobs:
         run: |
           bandit -r app mcp_servers main.py llm.py \
             -x tests,vendor \
-            --skip B104 \
             --severity-level medium \
             --confidence-level medium
 

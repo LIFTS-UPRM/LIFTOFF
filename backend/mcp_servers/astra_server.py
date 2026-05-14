@@ -20,12 +20,6 @@ from vendor.hab_predictor.astra.available_balloons_parachutes import (
 
 
 def _patch_fastmcp_for_pydantic_v2() -> None:
-    try:
-        create_model("_FastMCPCompatProbe", result=str)
-        return
-    except Exception:
-        pass
-
     def _create_wrapped_model_compat(
         func_name: str,
         annotation: Any,
@@ -34,7 +28,10 @@ def _patch_fastmcp_for_pydantic_v2() -> None:
         field_type = type(None) if annotation is None else annotation
         return create_model(model_name, result=(field_type, ...))
 
-    _fastmcp_func_metadata._create_wrapped_model = _create_wrapped_model_compat
+    try:
+        create_model("_FastMCPCompatProbe", result=str)
+    except Exception:
+        _fastmcp_func_metadata._create_wrapped_model = _create_wrapped_model_compat
 
 
 _patch_fastmcp_for_pydantic_v2()
