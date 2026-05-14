@@ -5,6 +5,7 @@ import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -99,6 +100,24 @@ def test_get_tools_filters_by_enabled_group() -> None:
 
 def test_get_tools_returns_no_schemas_when_no_groups_enabled() -> None:
     assert llm.get_tools([]) == []
+
+
+def test_openai_provider_reuses_async_client(monkeypatch) -> None:
+    created_clients = []
+
+    def fake_async_openai(**kwargs):
+        client = SimpleNamespace(kwargs=kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(llm.OpenAIProvider, "_shared_client", None)
+    monkeypatch.setattr(llm, "AsyncOpenAI", fake_async_openai)
+
+    first_provider = llm.OpenAIProvider()
+    second_provider = llm.OpenAIProvider()
+
+    assert first_provider.get_client() is second_provider.get_client()
+    assert len(created_clients) == 1
 
 
 def test_system_prompt_uses_sondehub_only_policy() -> None:

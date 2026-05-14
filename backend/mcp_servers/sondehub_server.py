@@ -18,12 +18,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
 
 
 def _patch_fastmcp_for_pydantic_v2() -> None:
-    try:
-        create_model("_FastMCPCompatProbe", result=str)
-        return
-    except Exception:
-        pass
-
     def _create_wrapped_model_compat(
         func_name: str,
         annotation: Any,
@@ -32,7 +26,10 @@ def _patch_fastmcp_for_pydantic_v2() -> None:
         field_type = type(None) if annotation is None else annotation
         return create_model(model_name, result=(field_type, ...))
 
-    _fastmcp_func_metadata._create_wrapped_model = _create_wrapped_model_compat
+    try:
+        create_model("_FastMCPCompatProbe", result=str)
+    except Exception:
+        _fastmcp_func_metadata._create_wrapped_model = _create_wrapped_model_compat
 
 
 _patch_fastmcp_for_pydantic_v2()
@@ -177,7 +174,8 @@ def _build_sampled_requests(
     launch_dt: datetime,
 ) -> tuple[int, list[dict[str, Any]]]:
     seed = params.seed if params.seed is not None else _seed_from_params(params, launch_dt)
-    rng = random.Random(seed)
+    # Deterministic Monte Carlo sampling; not used for security or secrets.
+    rng = random.Random(seed)  # nosec B311
     requests = []
 
     for run_index in range(params.num_runs):

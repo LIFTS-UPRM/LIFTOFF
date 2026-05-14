@@ -35,7 +35,7 @@ def get_settings() -> Settings:
         app_name=os.getenv("APP_NAME", "STRATOS Backend"),
         app_env=os.getenv("APP_ENV", "development"),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
-        host=os.getenv("HOST", "0.0.0.0"),
+        host=os.getenv("HOST", "127.0.0.1"),
         port=int(os.getenv("PORT", "8000")),
         llm_api_key=os.getenv("LLM_API_KEY", ""),
         llm_model=os.getenv("LLM_MODEL", "gpt-4o-mini"),

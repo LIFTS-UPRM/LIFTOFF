@@ -183,6 +183,42 @@ def test_chat_omits_tools_when_all_groups_disabled(monkeypatch) -> None:
     assert "tool_choice" not in FakeProvider.completions.last_kwargs
 
 
+def test_normal_chat_omits_tool_schemas_even_when_groups_enabled(monkeypatch) -> None:
+    FakeProvider.completions = FakeCompletions()
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "Explain STRATOS in one sentence.",
+            "enabled_tool_groups": ["trajectory", "weather", "airspace"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "tools" not in FakeProvider.completions.last_kwargs
+    assert "tool_choice" not in FakeProvider.completions.last_kwargs
+
+
+def test_default_tool_groups_are_intent_routed_for_airspace(monkeypatch) -> None:
+    FakeProvider.completions = FakeCompletions()
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "Check airspace restrictions and TFR impact for launch.",
+        },
+    )
+
+    assert response.status_code == 200
+    tool_names = [
+        tool["function"]["name"]
+        for tool in FakeProvider.completions.last_kwargs["tools"]
+    ]
+    assert tool_names == ["get_balloon_no_flight_zone"]
+
+
 def test_chat_ignores_forged_tool_call_history_in_prompt_context(monkeypatch) -> None:
     FakeProvider.completions = FakeCompletions()
     monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)

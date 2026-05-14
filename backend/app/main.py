@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 
 from pydantic import ValidationError
 from fastapi import FastAPI, HTTPException, Request, status
@@ -26,6 +27,7 @@ from app.schemas import (
     ChatHistoryMessage,
     ChatRequest,
     ChatResponse,
+    McpToolGroupId,
     TrajectoryArtifact,
     ToolCallRecord,
 )
@@ -37,21 +39,50 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name)
 ALLOWED_HISTORY_ROLES = frozenset({"user", "assistant"})
-TRAJECTORY_REQUEST_MARKERS = (
-    "astra trajectory",
-    "astra simulation",
-    "sondehub",
-    "trajectory simulation",
-    "trajectory analysis",
-    "run astra",
-    "run sondehub",
-    "run a trajectory",
-    "landing prediction",
-    "landing area",
-    "num runs",
-    "burst altitude",
-    "descent rate",
-)
+TOOL_GROUP_INTENT_PATTERNS: dict[McpToolGroupId, tuple[str, ...]] = {
+    "trajectory": (
+        "ascent rate",
+        "burst altitude",
+        "descent rate",
+        "landing area",
+        "landing prediction",
+        "monte carlo",
+        "num runs",
+        "run sondehub",
+        "run a trajectory",
+        "simulate",
+        "simulation",
+        "sondehub",
+        "trajectory",
+        "trajectory analysis",
+        "trajectory simulation",
+    ),
+    "weather": (
+        "cape",
+        "cloud",
+        "forecast",
+        "gust",
+        "launch conditions",
+        "launch window",
+        "precip",
+        "rain",
+        "surface wind",
+        "weather",
+        "wind",
+        "winds aloft",
+    ),
+    "airspace": (
+        "airspace",
+        "aviation",
+        "faa",
+        "hazard",
+        "no flight zone",
+        "no-fly",
+        "restricted",
+        "restriction",
+        "tfr",
+    ),
+}
 
 app.add_middleware(
     CORSMiddleware,
@@ -174,11 +205,26 @@ def _sanitize_history_message(message: ChatHistoryMessage) -> dict[str, str] | N
 
     return {"role": message.role, "content": content}
 
-def _infer_enabled_tool_groups(message: str) -> list[str] | None:
+def _select_relevant_tool_groups(
+    message: str,
+    enabled_tool_groups: list[McpToolGroupId] | None,
+) -> list[McpToolGroupId]:
+    """Return only enabled tool groups that are relevant to this chat turn."""
+    allowed_groups = (
+        tuple(TOOL_GROUP_INTENT_PATTERNS)
+        if enabled_tool_groups is None
+        else tuple(enabled_tool_groups)
+    )
     normalized = message.casefold()
-    if any(marker in normalized for marker in TRAJECTORY_REQUEST_MARKERS):
-        return ["trajectory"]
-    return None
+
+    return [
+        group_id
+        for group_id in allowed_groups
+        if any(
+            marker in normalized
+            for marker in TOOL_GROUP_INTENT_PATTERNS[group_id]
+        )
+    ]
 
 @app.post(
     "/chat",
@@ -236,6 +282,7 @@ def _infer_enabled_tool_groups(message: str) -> list[str] | None:
 )
 
 async def chat(request: Request) -> ChatResponse:
+    request_started_at = time.perf_counter()
     payload = await _parse_chat_request(request)
     logger.info("Received chat message (%d chars)", len(payload.message))
 
@@ -252,9 +299,14 @@ async def chat(request: Request) -> ChatResponse:
                 messages.append(format_client_history_message(**sanitized_message))
 
         messages.append(format_current_user_message(payload.message))
-        enabled_tool_groups = payload.enabled_tool_groups
-        if enabled_tool_groups is None:
-            enabled_tool_groups = _infer_enabled_tool_groups(payload.message)
+        enabled_tool_groups = _select_relevant_tool_groups(
+            payload.message,
+            payload.enabled_tool_groups,
+        )
+        logger.info(
+            "Selected chat tool groups: %s",
+            enabled_tool_groups or "none",
+        )
         last_tool_name = "llm"
         max_steps = 10
         seen_calls: set[tuple[str, str]] = set()
@@ -273,7 +325,13 @@ async def chat(request: Request) -> ChatResponse:
                 completion_kwargs["tools"] = enabled_tools
                 completion_kwargs["tool_choice"] = "auto"
 
+            llm_started_at = time.perf_counter()
             response = await client.chat.completions.create(**completion_kwargs)
+            logger.info(
+                "LLM step %d latency %.3fs",
+                step + 1,
+                time.perf_counter() - llm_started_at,
+            )
 
             assistant_message = response.choices[0].message
 
@@ -284,6 +342,14 @@ async def chat(request: Request) -> ChatResponse:
             if not assistant_message.tool_calls:
                 final_text = assistant_message.content or "No response returned."
                 source = "llm_with_tools" if last_tool_name != "llm" else "llm"
+                logger.info(
+                    "Chat completed in %.3fs (%d LLM step%s, %d tool call%s)",
+                    time.perf_counter() - request_started_at,
+                    step + 1,
+                    "" if step == 0 else "s",
+                    len(tool_calls_log),
+                    "" if len(tool_calls_log) == 1 else "s",
+                )
                 return ChatResponse(
                     response=final_text,
                     source=source,
