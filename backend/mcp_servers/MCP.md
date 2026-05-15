@@ -16,7 +16,7 @@ This document describes the MCP tools currently exposed by STRATOS.
 - `launch_lat` (float, required): Launch latitude.
 - `launch_lon` (float, required): Launch longitude.
 - `launch_elevation_m` (float, required): Launch elevation in metres.
-- `launch_datetime` (str, required): ISO 8601 launch time.
+- `launch_datetime` (str, required): `now` or ISO 8601 launch time.
 - `ascent_rate_ms` (float, required): Nominal ascent rate in m/s.
 - `burst_altitude_m` (float, required): Nominal burst altitude in metres.
 - `descent_rate_ms` (float, required): Nominal descent rate in m/s.
@@ -82,7 +82,7 @@ This document describes the MCP tools currently exposed by STRATOS.
 
 - `latitude` (float, required): Launch site latitude.
 - `longitude` (float, required): Launch site longitude.
-- `forecast_datetime` (str, required): ISO 8601 forecast time.
+- `forecast_datetime` (str, required): `now` or ISO 8601 forecast time.
 
 ### Output
 
@@ -110,7 +110,7 @@ This document describes the MCP tools currently exposed by STRATOS.
 - `launch_lat` (float, required): Launch latitude.
 - `launch_lon` (float, required): Launch longitude.
 - `launch_elevation_m` (float, required): Launch elevation in metres.
-- `launch_datetime` (str, required): ISO 8601 launch time.
+- `launch_datetime` (str, required): `now` or ISO 8601 launch time.
 - `ascent_rate_ms` (float, required): Nominal ascent rate in m/s.
 - `burst_altitude_m` (float, required): Nominal burst altitude in metres.
 - `descent_rate_ms` (float, required): Nominal descent rate in m/s.

@@ -138,6 +138,15 @@ def test_sondehub_wrapper_import_smoke() -> None:
     assert sondehub_server.SONDEHUB_TAWHIRI_ENDPOINT
 
 
+def test_sondehub_parse_datetime_accepts_now(monkeypatch) -> None:
+    from mcp_servers import sondehub_server
+
+    fixed_now = datetime(2026, 5, 14, 16, 37, 22)
+    monkeypatch.setattr(sondehub_server, "_utcnow_naive", lambda: fixed_now)
+
+    assert sondehub_server._parse_datetime(" now ") == fixed_now
+
+
 def test_sondehub_missing_profile_inputs_returns_clear_error() -> None:
     from mcp_servers import sondehub_server
 

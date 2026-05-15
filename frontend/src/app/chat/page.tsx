@@ -85,7 +85,8 @@ export default function ChatPage() {
       content,
       createdAt: new Date(),
     };
-    const nextMessages = [...messagesRef.current, userMessage];
+    const priorMessages = messagesRef.current;
+    const nextMessages = [...priorMessages, userMessage];
     const requestGeneration = ++requestGenerationRef.current;
 
     messagesRef.current = nextMessages;
@@ -93,7 +94,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const data = await sendMessage(content, nextMessages);
+      const data = await sendMessage(content, priorMessages);
       if (requestGeneration !== requestGenerationRef.current) {
         return;
       }

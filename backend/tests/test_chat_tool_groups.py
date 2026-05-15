@@ -58,10 +58,15 @@ def make_tool_call(*, call_id: str, name: str, arguments: dict) -> SimpleNamespa
 
 
 class FakeCompletions:
-    def __init__(self, responses: list[SimpleNamespace] | None = None) -> None:
+    def __init__(
+        self,
+        responses: list[SimpleNamespace] | None = None,
+        usage: SimpleNamespace | None = None,
+    ) -> None:
         self.last_kwargs: dict | None = None
         self.calls: list[dict] = []
         self.responses = responses or [make_message(content="No tool call needed.")]
+        self.usage = usage
 
     async def create(self, **kwargs):
         self.calls.append(kwargs)
@@ -71,7 +76,8 @@ class FakeCompletions:
                 SimpleNamespace(
                     message=self.responses.pop(0)
                 )
-            ]
+            ],
+            usage=self.usage,
         )
 
 
@@ -118,6 +124,49 @@ def test_chat_uses_only_selected_tool_groups(monkeypatch) -> None:
     assert tool_names == ["get_surface_weather", "get_winds_aloft"]
 
 
+def test_chat_overwrites_latest_usage_log(monkeypatch, tmp_path) -> None:
+    usage_log_path = tmp_path / "latest_chat_usage.json"
+    monkeypatch.setenv("CHAT_USAGE_LOG_PATH", str(usage_log_path))
+    FakeProvider.completions = FakeCompletions(
+        responses=[
+            make_message(content="First response."),
+            make_message(content="Second response."),
+        ],
+        usage=SimpleNamespace(
+            prompt_tokens=10,
+            completion_tokens=3,
+            total_tokens=13,
+        ),
+    )
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+
+    client = TestClient(app)
+    first_response = client.post("/chat", json={"message": "First chat"})
+    assert first_response.status_code == 200
+    first_log = json.loads(usage_log_path.read_text(encoding="utf-8"))
+    assert first_log["request"]["message"] == "First chat"
+    assert first_log["result"]["response"] == "First response."
+
+    second_response = client.post("/chat", json={"message": "Second chat"})
+
+    assert second_response.status_code == 200
+    latest_log_text = usage_log_path.read_text(encoding="utf-8")
+    latest_log = json.loads(latest_log_text)
+    assert latest_log["request"]["message"] == "Second chat"
+    assert latest_log["result"]["response"] == "Second response."
+    assert latest_log["result"]["model"] == "test-model"
+    assert latest_log["result"]["llm_steps"] == 1
+    assert latest_log["result"]["llm_usage"] == [
+        {
+            "completion_tokens": 3,
+            "prompt_tokens": 10,
+            "step": 1,
+            "total_tokens": 13,
+        }
+    ]
+    assert "First chat" not in latest_log_text
+
+
 def test_chat_infers_trajectory_tool_group_for_sondehub_simulation(monkeypatch) -> None:
     FakeProvider.completions = FakeCompletions()
     monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
@@ -141,6 +190,66 @@ def test_chat_infers_trajectory_tool_group_for_sondehub_simulation(monkeypatch) 
     assert "sondehub_run_simulation" in tool_names
     assert "get_surface_weather" not in tool_names
     assert "get_winds_aloft" not in tool_names
+
+
+def test_chat_uses_prior_tool_context_for_confirmation_turn(monkeypatch) -> None:
+    FakeProvider.completions = FakeCompletions()
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "yes",
+            "history": [
+                {
+                    "role": "user",
+                    "content": (
+                        "Run a SondeHub trajectory simulation for launch lat/lon "
+                        "18.2208, -67.1402, elevation 11 m, launch datetime now, "
+                        "ascent rate 5 m/s, burst altitude 30000 m, descent rate "
+                        "6 m/s, and num runs 5."
+                    ),
+                },
+                {
+                    "role": "assistant",
+                    "content": "Please confirm these trajectory simulation parameters.",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    tool_names = [
+        tool["function"]["name"]
+        for tool in FakeProvider.completions.last_kwargs["tools"]
+    ]
+    assert tool_names == ["sondehub_run_simulation"]
+
+
+def test_chat_does_not_use_history_for_unrelated_confirmation(monkeypatch) -> None:
+    FakeProvider.completions = FakeCompletions()
+    monkeypatch.setattr("app.main.OpenAIProvider", FakeProvider)
+
+    response = TestClient(app).post(
+        "/chat",
+        json={
+            "message": "yes",
+            "history": [
+                {
+                    "role": "user",
+                    "content": "Explain STRATOS in one sentence.",
+                },
+                {
+                    "role": "assistant",
+                    "content": "STRATOS supports balloon mission operations.",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "tools" not in FakeProvider.completions.last_kwargs
+    assert "tool_choice" not in FakeProvider.completions.last_kwargs
 
 
 def test_chat_does_not_expose_astra_tools_for_balloon_calculator_prompt(monkeypatch) -> None:

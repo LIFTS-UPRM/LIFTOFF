@@ -360,6 +360,13 @@ def test_coerce_datetime_normalizes_utc_payload():
     )
 
 
+def test_coerce_datetime_accepts_now(monkeypatch):
+    fixed_now = datetime(2026, 5, 14, 16, 37, 22)
+    monkeypatch.setattr(astra_app, "_utcnow_naive", lambda: fixed_now)
+
+    assert astra_app._coerce_datetime({"launch_datetime": " now "}, "launch_datetime") == fixed_now
+
+
 def test_simulate_endpoint_uses_service_result(monkeypatch):
     expected = {
         "status": "success",

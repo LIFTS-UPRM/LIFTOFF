@@ -1190,11 +1190,16 @@ def _coerce_bool(payload: dict[str, Any], key: str, *, default: bool = False) ->
 
 def _coerce_datetime(payload: dict[str, Any], key: str) -> datetime:
     value = _coerce_str(payload, key)
+    if value.lower() == "now":
+        return _utcnow_naive()
+
     normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
     try:
         result = datetime.fromisoformat(normalized)
     except ValueError as exc:
-        raise ValueError(f"{key} must be ISO 8601 format: YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS.") from exc
+        raise ValueError(
+            f"{key} must be 'now' or ISO 8601 format: YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS."
+        ) from exc
     if result.tzinfo is not None:
         return result.astimezone(UTC).replace(tzinfo=None)
     return result

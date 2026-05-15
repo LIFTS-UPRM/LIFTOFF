@@ -118,7 +118,7 @@ class SimulationInput(BaseModel):
     launch_elevation_m: float = Field(..., ge=0.0, le=5000.0)
     launch_datetime: str = Field(
         ...,
-        description="ISO 8601 UTC launch datetime.",
+        description="'now' or ISO 8601 UTC launch datetime.",
     )
     balloon_model: str = Field(..., description="Balloon model name")
     gas_type: str = Field(..., description="Helium or Hydrogen")

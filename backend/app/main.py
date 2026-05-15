@@ -15,6 +15,7 @@ from app.prompt_assembly import (
     format_current_user_message,
     format_tool_output_message,
 )
+from app.usage_log import write_latest_chat_usage
 from llm import OpenAIProvider, execute_tool
 from app.config import get_settings
 from app.logging import configure_logging
@@ -83,6 +84,26 @@ TOOL_GROUP_INTENT_PATTERNS: dict[McpToolGroupId, tuple[str, ...]] = {
         "tfr",
     ),
 }
+TOOL_CONTINUATION_RESPONSES = frozenset(
+    {
+        "confirm",
+        "confirmed",
+        "correct",
+        "do it",
+        "go ahead",
+        "looks good",
+        "ok",
+        "okay",
+        "please proceed",
+        "proceed",
+        "run it",
+        "that's correct",
+        "yes",
+        "y",
+        "yeah",
+        "yep",
+    }
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -205,9 +226,19 @@ def _sanitize_history_message(message: ChatHistoryMessage) -> dict[str, str] | N
 
     return {"role": message.role, "content": content}
 
+
+def _normalise_confirmation_text(message: str) -> str:
+    return " ".join(message.casefold().strip().strip(".!").split())
+
+
+def _is_tool_continuation_response(message: str) -> bool:
+    return _normalise_confirmation_text(message) in TOOL_CONTINUATION_RESPONSES
+
+
 def _select_relevant_tool_groups(
     message: str,
     enabled_tool_groups: list[McpToolGroupId] | None,
+    context_messages: list[str] | None = None,
 ) -> list[McpToolGroupId]:
     """Return only enabled tool groups that are relevant to this chat turn."""
     allowed_groups = (
@@ -215,7 +246,11 @@ def _select_relevant_tool_groups(
         if enabled_tool_groups is None
         else tuple(enabled_tool_groups)
     )
-    normalized = message.casefold()
+    intent_texts = [message]
+    if context_messages and _is_tool_continuation_response(message):
+        intent_texts.extend(context_messages[-6:])
+
+    normalized = "\n".join(intent_texts).casefold()
 
     return [
         group_id
@@ -225,6 +260,62 @@ def _select_relevant_tool_groups(
             for marker in TOOL_GROUP_INTENT_PATTERNS[group_id]
         )
     ]
+
+
+def _llm_usage_to_dict(usage: object) -> dict[str, object] | None:
+    if usage is None:
+        return None
+
+    if hasattr(usage, "model_dump"):
+        return usage.model_dump(mode="json")
+
+    usage_fields = ("prompt_tokens", "completion_tokens", "total_tokens")
+    usage_payload = {
+        field: getattr(usage, field)
+        for field in usage_fields
+        if hasattr(usage, field)
+    }
+    return usage_payload or None
+
+
+def _record_latest_chat_usage(
+    *,
+    payload: ChatRequest,
+    response: ChatResponse,
+    selected_tool_groups: list[McpToolGroupId],
+    model: str | None,
+    llm_steps: int,
+    llm_usage: list[dict[str, object]],
+    request_started_at: float,
+) -> ChatResponse:
+    write_latest_chat_usage(
+        {
+            "request": {
+                "enabled_tool_groups": payload.enabled_tool_groups,
+                "history_items": len(payload.history),
+                "message": payload.message,
+                "message_chars": len(payload.message),
+                "selected_tool_groups": selected_tool_groups,
+            },
+            "result": {
+                "elapsed_seconds": round(time.perf_counter() - request_started_at, 3),
+                "has_trajectory_artifact": response.trajectory_artifact is not None,
+                "llm_steps": llm_steps,
+                "llm_usage": llm_usage,
+                "model": model,
+                "response": response.response,
+                "response_chars": len(response.response),
+                "source": response.source,
+                "tool_call_count": len(response.tool_calls),
+                "tool_calls": [
+                    tool_call.model_dump(mode="json")
+                    for tool_call in response.tool_calls
+                ],
+            },
+        }
+    )
+    return response
+
 
 @app.post(
     "/chat",
@@ -288,20 +379,28 @@ async def chat(request: Request) -> ChatResponse:
 
     tool_calls_log: list[ToolCallRecord] = []
     trajectory_artifact: TrajectoryArtifact | None = None
+    enabled_tool_groups: list[McpToolGroupId] = []
+    llm_steps = 0
+    llm_usage: list[dict[str, object]] = []
+    model: str | None = None
     try:
         provider = OpenAIProvider()
         client = provider.get_client()
+        model = provider.get_model()
 
         messages: list[dict] = [{"role": "system", "content": provider.get_system_prompt()}]
+        history_context: list[str] = []
         for history_message in payload.history:
             sanitized_message = _sanitize_history_message(history_message)
             if sanitized_message is not None:
+                history_context.append(sanitized_message["content"])
                 messages.append(format_client_history_message(**sanitized_message))
 
         messages.append(format_current_user_message(payload.message))
         enabled_tool_groups = _select_relevant_tool_groups(
             payload.message,
             payload.enabled_tool_groups,
+            history_context,
         )
         logger.info(
             "Selected chat tool groups: %s",
@@ -317,7 +416,7 @@ async def chat(request: Request) -> ChatResponse:
             logger.info("LLM step %d", step + 1)
 
             completion_kwargs = {
-                "model": provider.get_model(),
+                "model": model,
                 "messages": messages,
             }
             enabled_tools = provider.get_tools(enabled_tool_groups)
@@ -327,6 +426,10 @@ async def chat(request: Request) -> ChatResponse:
 
             llm_started_at = time.perf_counter()
             response = await client.chat.completions.create(**completion_kwargs)
+            llm_steps = step + 1
+            usage_payload = _llm_usage_to_dict(getattr(response, "usage", None))
+            if usage_payload is not None:
+                llm_usage.append({"step": step + 1, **usage_payload})
             logger.info(
                 "LLM step %d latency %.3fs",
                 step + 1,
@@ -350,11 +453,19 @@ async def chat(request: Request) -> ChatResponse:
                     len(tool_calls_log),
                     "" if len(tool_calls_log) == 1 else "s",
                 )
-                return ChatResponse(
-                    response=final_text,
-                    source=source,
-                    tool_calls=tool_calls_log,
-                    trajectory_artifact=trajectory_artifact,
+                return _record_latest_chat_usage(
+                    payload=payload,
+                    response=ChatResponse(
+                        response=final_text,
+                        source=source,
+                        tool_calls=tool_calls_log,
+                        trajectory_artifact=trajectory_artifact,
+                    ),
+                    selected_tool_groups=enabled_tool_groups,
+                    model=model,
+                    llm_steps=llm_steps,
+                    llm_usage=llm_usage,
+                    request_started_at=request_started_at,
                 )
 
             # Append assistant tool-call message
@@ -384,11 +495,22 @@ async def chat(request: Request) -> ChatResponse:
                     tool_args = json.loads(tool_call.function.arguments or "{}")
                 except json.JSONDecodeError:
                     logger.exception("Invalid JSON arguments for tool %s", tool_name)
-                    return ChatResponse(
-                        response=f"Tool call failed: invalid JSON arguments for {tool_name}.",
-                        source="tool_error",
-                        tool_calls=tool_calls_log,
-                        trajectory_artifact=trajectory_artifact,
+                    return _record_latest_chat_usage(
+                        payload=payload,
+                        response=ChatResponse(
+                            response=(
+                                "Tool call failed: invalid JSON arguments "
+                                f"for {tool_name}."
+                            ),
+                            source="tool_error",
+                            tool_calls=tool_calls_log,
+                            trajectory_artifact=trajectory_artifact,
+                        ),
+                        selected_tool_groups=enabled_tool_groups,
+                        model=model,
+                        llm_steps=llm_steps,
+                        llm_usage=llm_usage,
+                        request_started_at=request_started_at,
                     )
 
                 tool_key = (tool_name, json.dumps(tool_args, sort_keys=True))
@@ -468,18 +590,34 @@ async def chat(request: Request) -> ChatResponse:
                     )
                 )
 
-        return ChatResponse(
-            response="Tool-calling loop reached the maximum number of steps.",
-            source="tool_loop_limit",
-            tool_calls=tool_calls_log,
-            trajectory_artifact=trajectory_artifact,
+        return _record_latest_chat_usage(
+            payload=payload,
+            response=ChatResponse(
+                response="Tool-calling loop reached the maximum number of steps.",
+                source="tool_loop_limit",
+                tool_calls=tool_calls_log,
+                trajectory_artifact=trajectory_artifact,
+            ),
+            selected_tool_groups=enabled_tool_groups,
+            model=model,
+            llm_steps=llm_steps,
+            llm_usage=llm_usage,
+            request_started_at=request_started_at,
         )
 
     except Exception as e:
         logger.exception("Unhandled error in chat endpoint")
-        return ChatResponse(
-            response=f"Server error: {str(e)}",
-            source="error",
-            tool_calls=tool_calls_log,
-            trajectory_artifact=trajectory_artifact,
+        return _record_latest_chat_usage(
+            payload=payload,
+            response=ChatResponse(
+                response=f"Server error: {str(e)}",
+                source="error",
+                tool_calls=tool_calls_log,
+                trajectory_artifact=trajectory_artifact,
+            ),
+            selected_tool_groups=enabled_tool_groups,
+            model=model,
+            llm_steps=llm_steps,
+            llm_usage=llm_usage,
+            request_started_at=request_started_at,
         )

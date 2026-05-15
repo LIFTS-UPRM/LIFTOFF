@@ -8,7 +8,7 @@ Tool functions are also importable directly for agent dispatch.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -37,10 +37,48 @@ def _safe(lst: list, i: int, default: float = 0.0) -> float:
     return v if v is not None else default
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_forecast_datetime(value: str) -> datetime:
+    """Return a timezone-aware UTC datetime from 'now' or an ISO 8601 string."""
+    text = value.strip()
+    if text.lower() == "now":
+        return _utcnow()
+
+    dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _normalise_dt(s: str) -> str:
-    """Return 'YYYY-MM-DDTHH:MM' in UTC from any ISO 8601 string."""
-    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+    """Return 'YYYY-MM-DDTHH:MM' in UTC from 'now' or any ISO 8601 string."""
+    return _parse_forecast_datetime(s).strftime("%Y-%m-%dT%H:%M")
+
+
+def _parse_open_meteo_time(value: str) -> datetime:
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _nearest_forecast_index(times: list[str], target: datetime) -> int | None:
+    parsed_times = [_parse_open_meteo_time(value) for value in times]
+    if not parsed_times:
+        return None
+
+    lower_bound = parsed_times[0] - timedelta(minutes=30)
+    upper_bound = parsed_times[-1] + timedelta(minutes=30)
+    if target < lower_bound or target > upper_bound:
+        return None
+
+    return min(
+        range(len(parsed_times)),
+        key=lambda index: abs((parsed_times[index] - target).total_seconds()),
+    )
 
 
 def _obs_links(lat: float, lon: float) -> dict[str, str]:
@@ -186,7 +224,7 @@ async def get_winds_aloft(
     Args:
         latitude: Launch site latitude (-90 to 90).
         longitude: Launch site longitude (-180 to 180).
-        forecast_datetime: ISO 8601 datetime (e.g. '2026-03-15T12:00:00Z').
+        forecast_datetime: 'now' or ISO 8601 datetime (e.g. '2026-03-15T12:00:00Z').
 
     Returns:
         Dict with wind_profile (9 levels), jet_stream_alert, and observation_links.
@@ -216,13 +254,13 @@ async def get_winds_aloft(
     hourly = data.get("hourly", {})
     times  = hourly.get("time", [])
 
-    # Find the index closest to forecast_datetime
+    # Find the index closest to forecast_datetime.
     try:
-        target_prefix = _normalise_dt(forecast_datetime)
+        target_datetime = _parse_forecast_datetime(forecast_datetime)
     except (ValueError, OverflowError) as exc:
         return {"error": f"Invalid forecast_datetime: {exc}", "source": "open-meteo"}
 
-    idx = next((i for i, t in enumerate(times) if t[:16] == target_prefix), None)
+    idx = _nearest_forecast_index(times, target_datetime)
     if idx is None:
         return {
             "error": f"forecast_datetime '{forecast_datetime}' not found in 3-day window",

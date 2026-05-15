@@ -74,7 +74,7 @@ WEATHER_TOOLS: list[dict] = [
                     },
                     "forecast_datetime": {
                         "type": "string",
-                        "description": "ISO 8601 datetime for the forecast (e.g. '2026-03-15T12:00:00Z')",
+                        "description": "'now' or ISO 8601 datetime for the forecast (e.g. '2026-03-15T12:00:00Z')",
                     },
                 },
                 "required": ["latitude", "longitude", "forecast_datetime"],
@@ -112,7 +112,7 @@ AIRSPACE_TOOLS: list[dict] = [
                     },
                     "launch_datetime": {
                         "type": "string",
-                        "description": "Launch time in ISO 8601 format.",
+                        "description": "Launch time as 'now' or ISO 8601 format.",
                     },
                     "ascent_rate_ms": {
                         "type": "number",
@@ -197,7 +197,7 @@ SONDEHUB_TOOLS: list[dict] = [
                     },
                     "launch_datetime": {
                         "type": "string",
-                        "description": "Launch time in ISO 8601 format.",
+                        "description": "Launch time as 'now' or ISO 8601 format.",
                     },
                     "ascent_rate_ms": {
                         "type": "number",

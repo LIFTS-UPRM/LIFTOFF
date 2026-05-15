@@ -66,7 +66,7 @@ class SondehubSimulationInput(BaseModel):
     launch_lat: float = Field(..., ge=-90.0, le=90.0)
     launch_lon: float = Field(..., ge=-180.0, le=180.0)
     launch_elevation_m: float = Field(..., ge=0.0, le=5000.0)
-    launch_datetime: str = Field(..., description="ISO 8601 UTC launch datetime.")
+    launch_datetime: str = Field(..., description="'now' or ISO 8601 UTC launch datetime.")
     ascent_rate_ms: float = Field(..., gt=0.0, le=20.0)
     burst_altitude_m: float = Field(..., gt=0.0, le=60000.0)
     descent_rate_ms: float = Field(..., gt=0.0, le=100.0)
@@ -119,8 +119,16 @@ def _great_circle_km(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
     return 2.0 * earth_radius_km * math.asin(math.sqrt(a))
 
 
+def _utcnow_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _parse_datetime(value: str) -> datetime:
-    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    text = value.strip()
+    if text.lower() == "now":
+        return _utcnow_naive()
+
+    normalized = text[:-1] + "+00:00" if text.endswith("Z") else text
     parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is not None:
         return parsed.astimezone(timezone.utc).replace(tzinfo=None)

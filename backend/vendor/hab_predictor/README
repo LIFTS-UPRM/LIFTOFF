@@ -184,7 +184,7 @@ PYTHONPATH=. pytest test/test_web_app.py test/test_flight.py test/test_weather.p
 
 ## Technical Notes
 
-- **Time Format**: All `launch_datetime` values must be in ISO 8601 format (e.g., `2026-04-01T12:00:00`) and are interpreted as UTC
+- **Time Format**: `launch_datetime` accepts `now` or ISO 8601 format (e.g., `2026-04-01T12:00:00`) and is interpreted as UTC
 - **Pressure Units**: THREDDS GFS pressure coordinates are automatically converted from Pa to hPa internally
 - **UTC Assumption**: The web UI displays times as UTC to match forecast data standards
 

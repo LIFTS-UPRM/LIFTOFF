@@ -50,6 +50,7 @@ build/
 *.pid
 *.sqlite3
 backend/.cache/
+backend/logs/
 
 # Python virtualenv/test tooling
 .tox/
