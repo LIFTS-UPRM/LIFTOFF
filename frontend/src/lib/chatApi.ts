@@ -61,11 +61,16 @@ function makeRuntimeSessionId(): string {
     return `sess_${crypto.randomUUID()}`;
   }
 
-  // randomUUID unavailable (very old runtime) — fall back to getRandomValues, which is CSPRNG.
-  // Never use Math.random() for a session identifier.
-  const buf = new Uint8Array(16);
-  crypto.getRandomValues(buf);
-  return `sess_${Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const buf = new Uint8Array(16);
+    crypto.getRandomValues(buf);
+    return `sess_${Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  throw new Error(
+    "No cryptographically secure random source is available in this runtime. " +
+    "Session ID cannot be generated safely.",
+  );
 }
 
 function getRuntimeSessionId(): string {

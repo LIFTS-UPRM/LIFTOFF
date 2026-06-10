@@ -84,6 +84,8 @@ class RuntimeRequest(BaseModel):
     @field_validator("user_id", "mission_id", "session_id", "message")
     @classmethod
     def _strip_required_text(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("Field must not contain null bytes.")
         stripped = value.strip()
         if not stripped:
             raise ValueError("Field must not be blank.")

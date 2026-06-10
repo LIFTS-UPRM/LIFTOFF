@@ -185,7 +185,18 @@ def _validation_error_details(exc: ValidationError) -> list[dict]:
 
 
 async def _parse_raw_payload(request: Request, label: str) -> dict:
-    raw_body = await _read_limited_body(request)
+    try:
+        raw_body = await _read_limited_body(request)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": f"{label} payload is too large.",
+                    "limit_bytes": CHAT_PAYLOAD_MAX_BYTES,
+                },
+            ) from exc
+        raise
 
     try:
         raw_payload = json.loads(raw_body)
