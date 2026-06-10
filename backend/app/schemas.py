@@ -62,6 +62,8 @@ class WriteIntent(BaseModel):
         if value is None:
             return None
 
+        if "\x00" in value:
+            raise ValueError("Field must not contain null bytes.")
         stripped = value.strip()
         if not stripped:
             raise ValueError("Field must not be blank.")
@@ -122,23 +124,6 @@ class TrustedConversationState(BaseModel):
     """Server-owned prior tool activity reconstructed from observed execution."""
 
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
-
-
-class RuntimeSharedContext(BaseModel):
-    """Server-owned mission context envelope placeholder for runtime calls."""
-
-    core_documents: list[str] = Field(default_factory=list)
-    intent_documents: list[str] = Field(default_factory=list)
-
-
-class RuntimeRequestContext(BaseModel):
-    user_id: str
-    mission_id: str
-    session_id: str
-    operation: RuntimeOperation
-    message: str
-    write_intent: WriteIntent | None = None
-    shared_context: RuntimeSharedContext = Field(default_factory=RuntimeSharedContext)
 
 
 class TrajectoryArtifactPoint(BaseModel):

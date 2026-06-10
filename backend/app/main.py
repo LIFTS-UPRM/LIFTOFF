@@ -30,9 +30,7 @@ from app.schemas import (
     ChatResponse,
     McpToolGroupId,
     RuntimeRequest,
-    RuntimeRequestContext,
     RuntimeResponse,
-    RuntimeSharedContext,
     TrajectoryArtifact,
     ToolCallRecord,
     WriteResult,
@@ -186,7 +184,7 @@ def _validation_error_details(exc: ValidationError) -> list[dict]:
         return exc.errors()
 
 
-async def _parse_chat_request(request: Request) -> ChatRequest:
+async def _parse_raw_payload(request: Request, label: str) -> dict:
     raw_body = await _read_limited_body(request)
 
     try:
@@ -194,29 +192,31 @@ async def _parse_chat_request(request: Request) -> ChatRequest:
     except json.JSONDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "Chat request body must be valid JSON."},
+            detail={"error": f"{label} body must be valid JSON."},
         ) from exc
     except RecursionError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "Chat request JSON is too deeply nested."},
+            detail={"error": f"{label} JSON is too deeply nested."},
         ) from exc
 
     if not isinstance(raw_payload, dict):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "Chat request body must be a JSON object."},
+            detail={"error": f"{label} body must be a JSON object."},
         )
 
     if not _within_json_depth(raw_payload):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": "Chat request JSON is too deeply nested.",
-                "limit_depth": CHAT_PAYLOAD_MAX_DEPTH,
-            },
+            detail={"error": f"{label} JSON is too deeply nested.", "limit_depth": CHAT_PAYLOAD_MAX_DEPTH},
         )
 
+    return raw_payload
+
+
+async def _parse_chat_request(request: Request) -> ChatRequest:
+    raw_payload = await _parse_raw_payload(request, "Chat request")
     try:
         return ChatRequest.model_validate(raw_payload)
     except ValidationError as exc:
@@ -230,36 +230,7 @@ async def _parse_chat_request(request: Request) -> ChatRequest:
 
 
 async def _parse_runtime_request(request: Request) -> RuntimeRequest:
-    raw_body = await _read_limited_body(request)
-
-    try:
-        raw_payload = json.loads(raw_body)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "Runtime request body must be valid JSON."},
-        ) from exc
-    except RecursionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "Runtime request JSON is too deeply nested."},
-        ) from exc
-
-    if not isinstance(raw_payload, dict):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "Runtime request body must be a JSON object."},
-        )
-
-    if not _within_json_depth(raw_payload):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": "Runtime request JSON is too deeply nested.",
-                "limit_depth": CHAT_PAYLOAD_MAX_DEPTH,
-            },
-        )
-
+    raw_payload = await _parse_raw_payload(request, "Runtime request")
     try:
         return RuntimeRequest.model_validate(raw_payload)
     except ValidationError as exc:
@@ -343,9 +314,11 @@ def _record_latest_chat_usage(
     llm_steps: int,
     llm_usage: list[dict[str, object]],
     request_started_at: float,
+    usage_source: str = "chat",
 ) -> ChatResponse:
     write_latest_chat_usage(
         {
+            "usage_source": usage_source,
             "request": {
                 "enabled_tool_groups": payload.enabled_tool_groups,
                 "history_items": len(payload.history),
@@ -373,41 +346,26 @@ def _record_latest_chat_usage(
     return response
 
 
-def _build_runtime_context(payload: RuntimeRequest) -> RuntimeRequestContext:
-    return RuntimeRequestContext(
-        user_id=payload.user_id,
-        mission_id=payload.mission_id,
-        session_id=payload.session_id,
-        operation=payload.operation,
-        message=payload.message,
-        write_intent=payload.write_intent,
-        shared_context=RuntimeSharedContext(),
-    )
-
-
 def _to_runtime_response(
     *,
-    context: RuntimeRequestContext,
+    payload: RuntimeRequest,
     chat_response: ChatResponse,
 ) -> RuntimeResponse:
     return RuntimeResponse(
         response=chat_response.response,
         source=RUNTIME_RESPONSE_SOURCE,
-        session_id=context.session_id,
-        mission_id=context.mission_id,
+        session_id=payload.session_id,
+        mission_id=payload.mission_id,
         tool_calls=chat_response.tool_calls,
         trajectory_artifact=chat_response.trajectory_artifact,
         write_result=None,
     )
 
 
-def _write_intent_validated_response(context: RuntimeRequestContext) -> RuntimeResponse:
-    if context.write_intent is None:
-        raise ValueError("Runtime write intent context is missing write_intent.")
-
+def _write_intent_validated_response(payload: RuntimeRequest) -> RuntimeResponse:
     write_result = WriteResult(
-        operation=context.write_intent.operation,
-        target_file=context.write_intent.target_file,
+        operation=payload.write_intent.operation,  # type: ignore[union-attr]
+        target_file=payload.write_intent.target_file,  # type: ignore[union-attr]
         summary=(
             "Validated structured write intent. No shared mission file was "
             "mutated because the v1 mission workspace writer is not implemented yet."
@@ -417,8 +375,8 @@ def _write_intent_validated_response(context: RuntimeRequestContext) -> RuntimeR
     return RuntimeResponse(
         response=write_result.summary,
         source=RUNTIME_RESPONSE_SOURCE,
-        session_id=context.session_id,
-        mission_id=context.mission_id,
+        session_id=payload.session_id,
+        mission_id=payload.mission_id,
         tool_calls=[],
         trajectory_artifact=None,
         write_result=write_result,
@@ -493,6 +451,7 @@ async def _run_chat_completion(
     *,
     payload: ChatRequest,
     request_started_at: float,
+    usage_source: str = "chat",
 ) -> ChatResponse:
     logger.info("Received chat message (%d chars)", len(payload.message))
 
@@ -585,6 +544,7 @@ async def _run_chat_completion(
                     llm_steps=llm_steps,
                     llm_usage=llm_usage,
                     request_started_at=request_started_at,
+                    usage_source=usage_source,
                 )
 
             # Append assistant tool-call message
@@ -630,6 +590,7 @@ async def _run_chat_completion(
                         llm_steps=llm_steps,
                         llm_usage=llm_usage,
                         request_started_at=request_started_at,
+                        usage_source=usage_source,
                     )
 
                 tool_key = (tool_name, json.dumps(tool_args, sort_keys=True))
@@ -722,6 +683,7 @@ async def _run_chat_completion(
             llm_steps=llm_steps,
             llm_usage=llm_usage,
             request_started_at=request_started_at,
+            usage_source=usage_source,
         )
 
     except Exception as e:
@@ -739,6 +701,7 @@ async def _run_chat_completion(
             llm_steps=llm_steps,
             llm_usage=llm_usage,
             request_started_at=request_started_at,
+            usage_source=usage_source,
         )
 
 
@@ -766,28 +729,28 @@ async def _run_chat_completion(
 async def runtime_request(request: Request) -> RuntimeResponse:
     request_started_at = time.perf_counter()
     payload = await _parse_runtime_request(request)
-    context = _build_runtime_context(payload)
 
     logger.info(
         "Received runtime request operation=%s mission_id=%s session_id=%s",
-        context.operation,
-        context.mission_id,
-        context.session_id,
+        payload.operation,
+        payload.mission_id,
+        payload.session_id,
     )
 
-    if context.operation == "write_intent":
-        return _write_intent_validated_response(context)
+    if payload.operation == "write_intent":
+        return _write_intent_validated_response(payload)
 
     chat_payload = ChatRequest(
-        message=context.message,
+        message=payload.message,
         history=[],
         enabled_tool_groups=payload.enabled_tool_groups,
     )
     chat_response = await _run_chat_completion(
         payload=chat_payload,
         request_started_at=request_started_at,
+        usage_source="runtime",
     )
     return _to_runtime_response(
-        context=context,
+        payload=payload,
         chat_response=chat_response,
     )

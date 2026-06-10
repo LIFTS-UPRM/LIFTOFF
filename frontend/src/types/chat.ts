@@ -83,4 +83,5 @@ export interface Message {
   // Server-generated UI metadata only; never sent back as trusted /chat input.
   toolCalls?: ToolCallRecord[];
   trajectoryArtifact?: TrajectoryArtifact | null;
+  writeResult?: WriteResult | null;
 }

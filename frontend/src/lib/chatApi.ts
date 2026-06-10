@@ -1,4 +1,4 @@
-import type { Message, TrajectoryArtifact, WriteResult } from "@/types/chat";
+import type { TrajectoryArtifact, WriteResult } from "@/types/chat";
 
 export interface ChatApiResponse {
   response: string;
@@ -12,9 +12,7 @@ export interface ChatApiResponse {
 
 const RUNTIME_SESSION_STORAGE_KEY = "stratos-runtime-session-id";
 const RUNTIME_USER_STORAGE_KEY = "stratos-runtime-user-id";
-const RUNTIME_MISSION_STORAGE_KEY = "stratos-runtime-mission-id";
 const DEFAULT_RUNTIME_USER_ID = "stratos-local-user";
-const DEFAULT_RUNTIME_MISSION_ID = "aero";
 
 function getRuntimeEndpoint(): string {
   const configuredBase = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
@@ -34,12 +32,28 @@ function getRuntimeEndpoint(): string {
   return "/api/runtime/request";
 }
 
+function safeLocalStorageGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // storage blocked — value won't persist but the request still works
+  }
+}
+
 function getStoredValue(key: string, fallback: string): string {
   if (typeof window === "undefined") {
     return fallback;
   }
 
-  return window.localStorage.getItem(key) || fallback;
+  return safeLocalStorageGet(key) || fallback;
 }
 
 function makeRuntimeSessionId(): string {
@@ -47,7 +61,11 @@ function makeRuntimeSessionId(): string {
     return `sess_${crypto.randomUUID()}`;
   }
 
-  return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  // randomUUID unavailable (very old runtime) — fall back to getRandomValues, which is CSPRNG.
+  // Never use Math.random() for a session identifier.
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return `sess_${Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
 function getRuntimeSessionId(): string {
@@ -55,32 +73,33 @@ function getRuntimeSessionId(): string {
     return makeRuntimeSessionId();
   }
 
-  const existing = window.localStorage.getItem(RUNTIME_SESSION_STORAGE_KEY);
+  const existing = safeLocalStorageGet(RUNTIME_SESSION_STORAGE_KEY);
   if (existing) {
     return existing;
   }
 
   const sessionId = makeRuntimeSessionId();
-  window.localStorage.setItem(RUNTIME_SESSION_STORAGE_KEY, sessionId);
+  safeLocalStorageSet(RUNTIME_SESSION_STORAGE_KEY, sessionId);
   return sessionId;
 }
 
 function rememberRuntimeSessionId(sessionId: string): void {
   if (typeof window !== "undefined" && sessionId) {
-    window.localStorage.setItem(RUNTIME_SESSION_STORAGE_KEY, sessionId);
+    safeLocalStorageSet(RUNTIME_SESSION_STORAGE_KEY, sessionId);
   }
 }
 
 /**
  * Send a message to the STRATOS backend and return the response.
  * Throws an Error with a user-facing message on network or server failure.
+ *
+ * Client-supplied history is not forwarded — the runtime contract rejects it.
+ * Server-side session continuity is managed via session_id.
  */
 export async function sendMessage(
   message: string,
-  history: Message[] = [],
+  missionId: string,
 ): Promise<ChatApiResponse> {
-  void history;
-
   let res: Response;
 
   try {
@@ -90,10 +109,7 @@ export async function sendMessage(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: getStoredValue(RUNTIME_USER_STORAGE_KEY, DEFAULT_RUNTIME_USER_ID),
-        mission_id: getStoredValue(
-          RUNTIME_MISSION_STORAGE_KEY,
-          DEFAULT_RUNTIME_MISSION_ID,
-        ),
+        mission_id: missionId,
         session_id: getRuntimeSessionId(),
         operation: "chat",
         message,

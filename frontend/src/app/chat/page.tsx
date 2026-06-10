@@ -85,8 +85,7 @@ export default function ChatPage() {
       content,
       createdAt: new Date(),
     };
-    const priorMessages = messagesRef.current;
-    const nextMessages = [...priorMessages, userMessage];
+    const nextMessages = [...messagesRef.current, userMessage];
     const requestGeneration = ++requestGenerationRef.current;
 
     messagesRef.current = nextMessages;
@@ -94,7 +93,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const data = await sendMessage(content, priorMessages);
+      const data = await sendMessage(content, activeMissionId);
       if (requestGeneration !== requestGenerationRef.current) {
         return;
       }
@@ -106,6 +105,7 @@ export default function ChatPage() {
         createdAt: new Date(),
         toolCalls: data.tool_calls,
         trajectoryArtifact: data.trajectory_artifact,
+        writeResult: data.write_result,
       };
       messagesRef.current = [...messagesRef.current, assistantMessage];
       setMessages(messagesRef.current);
@@ -129,7 +129,7 @@ export default function ChatPage() {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [activeMissionId]);
 
   const handleNewChat = useCallback(() => {
     requestGenerationRef.current += 1;
