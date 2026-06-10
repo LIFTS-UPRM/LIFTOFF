@@ -286,19 +286,54 @@ Default local URL:
 Available endpoints:
 
 - `GET /health`
-- `POST /chat`
+- `POST /runtime/request` - main v1 mission-aware runtime contract
+- `POST /chat` - legacy compatibility chat endpoint
 
 Example calls:
 
 ```bash
 curl -s http://127.0.0.1:8000/health
-curl -s -X POST http://127.0.0.1:8000/chat \
+curl -s -X POST http://127.0.0.1:8000/runtime/request \
   -H "Content-Type: application/json" \
-  -d '{"message":"hello"}'
+  -d '{
+    "user_id": "u_123",
+    "mission_id": "aero",
+    "session_id": "sess_abc123",
+    "operation": "chat",
+    "message": "hello",
+    "write_intent": null
+  }'
+
+curl -s -X POST http://127.0.0.1:8000/runtime/request \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "u_123",
+    "mission_id": "aero",
+    "session_id": "sess_abc123",
+    "operation": "write_intent",
+    "message": "Mark payload power verification complete.",
+    "write_intent": {
+      "operation": "checklist_item_set_status",
+      "mission_id": "aero",
+      "target_file": "missions/aero/checklists/preflight.md",
+      "item_id": "payload-power-verification",
+      "new_status": "done"
+    }
+  }'
 ```
+
+`POST /runtime/request` trust model:
+
+- The v1 request contract explicitly carries `user_id`, `mission_id`, `session_id`, and `operation`.
+- Client-supplied `history` is rejected on this endpoint; browser transcript state is not authoritative mission context.
+- STRATOS owns the runtime context envelope. Mission document loading is a follow-up, but the boundary is server-owned from this contract onward.
+- Until authentication middleware exists, request-body `user_id` is contract input only. It must not be treated as authorization for mission access or shared writes.
+- Structured write intents are validated for allowed operation names and mission-local target paths. They return `write_result.status="validated"` and do not mutate shared mission files until the mission workspace writer/review model is implemented.
+- Runtime responses include `response`, `source`, `session_id`, `mission_id`, `tool_calls`, `trajectory_artifact`, and `write_result`.
 
 `POST /chat` trust model:
 
+- `/chat` remains available as a compatibility endpoint for older callers.
 - Client-supplied `history` is treated as untrusted transcript input only.
 - The backend sanitizes prior history down to plain `role` and `content`.
 - Client-supplied prior `tool_calls` are ignored and never treated as authoritative state.
