@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Message } from "@/types/chat";
+import { useRouter } from "next/navigation";
+import type { Message, MessageRole } from "@/types/chat";
 import { MISSIONS } from "@/lib/missions";
-import { sendMessage } from "@/lib/chatApi";
+import { sendMessage, clearRuntimeSessionId } from "@/lib/chatApi";
+import { createClient } from "@/lib/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import MessageList from "@/components/chat/MessageList";
@@ -42,9 +44,11 @@ function CloseIcon() {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [activeMissionId, setActiveMissionId] = useState(MISSIONS[0]?.id ?? "");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,6 +81,65 @@ export default function ChatPage() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [isSearchOpen]);
+
+  // Load persisted conversation history whenever the active mission changes.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHistory() {
+      setIsLoadingHistory(true);
+      requestGenerationRef.current += 1;
+      messagesRef.current = [];
+      setMessages([]);
+
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || cancelled) return;
+
+        const sessionKey = `stratos-session-${activeMissionId}`;
+        const sessionId =
+          (typeof window !== "undefined" &&
+            window.localStorage.getItem(sessionKey)) ??
+          null;
+
+        if (!sessionId) return;
+
+        const { data } = await supabase
+          .from("messages")
+          .select("role, content, created_at")
+          .eq("session_id", sessionId)
+          .order("created_at")
+          .limit(50);
+
+        if (cancelled || !data || data.length === 0) return;
+
+        const loaded: Message[] = data.map((m, i) => ({
+          id: `db-${i}-${m.created_at}`,
+          role: m.role as MessageRole,
+          content: m.content,
+          createdAt: new Date(m.created_at),
+        }));
+
+        messagesRef.current = loaded;
+        setMessages(loaded);
+      } catch {
+        // History load failure is non-fatal; user starts a fresh view.
+      } finally {
+        if (!cancelled) setIsLoadingHistory(false);
+      }
+    }
+
+    loadHistory();
+    return () => { cancelled = true; };
+  }, [activeMissionId]);
+
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }, [router]);
 
   const handleSend = useCallback(async (content: string) => {
     const userMessage: Message = {
@@ -132,11 +195,12 @@ export default function ChatPage() {
   }, [activeMissionId]);
 
   const handleNewChat = useCallback(() => {
+    clearRuntimeSessionId(activeMissionId);
     requestGenerationRef.current += 1;
     messagesRef.current = [];
     setMessages([]);
     setIsLoading(false);
-  }, []);
+  }, [activeMissionId]);
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
@@ -170,6 +234,7 @@ export default function ChatPage() {
         isOpen={isSidebarOpen}
         onNewChat={handleNewChat}
         onOpenSearch={handleOpenSearch}
+        onLogout={handleLogout}
         missions={MISSIONS}
         activeMissionId={activeMissionId}
       />
@@ -186,7 +251,7 @@ export default function ChatPage() {
         <main className={styles.chatMain}>
           <MessageList
             messages={messages}
-            isLoading={isLoading}
+            isLoading={isLoading || isLoadingHistory}
           />
           <InputBar
             onSend={handleSend}

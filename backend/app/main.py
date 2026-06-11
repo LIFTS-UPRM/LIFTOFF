@@ -10,11 +10,13 @@ from fastapi import FastAPI, HTTPException, Request, status
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import get_current_user_id
 from app.prompt_assembly import (
     format_client_history_message,
     format_current_user_message,
     format_tool_output_message,
 )
+from app.supabase_client import get_supabase
 from app.usage_log import write_latest_chat_usage
 from llm import OpenAIProvider, execute_tool
 from app.config import get_settings
@@ -35,6 +37,7 @@ from app.schemas import (
     ToolCallRecord,
     WriteResult,
 )
+from fastapi import Depends
 
 
 settings = get_settings()
@@ -116,7 +119,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
     ],
     allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -355,6 +358,67 @@ def _record_latest_chat_usage(
         }
     )
     return response
+
+
+def _upsert_session(user_id: str, session_id: str, mission_id: str) -> None:
+    try:
+        get_supabase().table("user_sessions").upsert(
+            {
+                "id": session_id,
+                "user_id": user_id,
+                "mission_id": mission_id,
+                "last_active_at": "now()",
+            },
+            on_conflict="id",
+        ).execute()
+    except Exception:
+        logger.warning("Failed to upsert user session %s", session_id, exc_info=True)
+
+
+def _load_history(session_id: str) -> list[dict]:
+    try:
+        result = (
+            get_supabase()
+            .table("messages")
+            .select("role,content")
+            .eq("session_id", session_id)
+            .order("created_at")
+            .limit(CHAT_HISTORY_MAX_ITEMS)
+            .execute()
+        )
+        return result.data or []
+    except Exception:
+        logger.warning("Failed to load history for session %s", session_id, exc_info=True)
+        return []
+
+
+def _save_messages(
+    *,
+    session_id: str,
+    user_id: str,
+    mission_id: str,
+    user_content: str,
+    assistant_content: str,
+) -> None:
+    try:
+        get_supabase().table("messages").insert([
+            {
+                "session_id": session_id,
+                "user_id": user_id,
+                "mission_id": mission_id,
+                "role": "user",
+                "content": user_content,
+            },
+            {
+                "session_id": session_id,
+                "user_id": user_id,
+                "mission_id": mission_id,
+                "role": "assistant",
+                "content": assistant_content,
+            },
+        ]).execute()
+    except Exception:
+        logger.warning("Failed to save messages for session %s", session_id, exc_info=True)
 
 
 def _to_runtime_response(
@@ -737,23 +801,35 @@ async def _run_chat_completion(
         }
     },
 )
-async def runtime_request(request: Request) -> RuntimeResponse:
+async def runtime_request(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> RuntimeResponse:
     request_started_at = time.perf_counter()
     payload = await _parse_runtime_request(request)
 
     logger.info(
-        "Received runtime request operation=%s mission_id=%s session_id=%s",
+        "Received runtime request operation=%s mission_id=%s session_id=%s user_id=%s",
         payload.operation,
         payload.mission_id,
         payload.session_id,
+        user_id,
     )
+
+    _upsert_session(user_id, payload.session_id, payload.mission_id)
 
     if payload.operation == "write_intent":
         return _write_intent_validated_response(payload)
 
+    db_history = _load_history(payload.session_id)
+    chat_history = [
+        ChatHistoryMessage(role=m["role"], content=m["content"])
+        for m in db_history
+    ]
+
     chat_payload = ChatRequest(
         message=payload.message,
-        history=[],
+        history=chat_history,
         enabled_tool_groups=payload.enabled_tool_groups,
     )
     chat_response = await _run_chat_completion(
@@ -761,6 +837,15 @@ async def runtime_request(request: Request) -> RuntimeResponse:
         request_started_at=request_started_at,
         usage_source="runtime",
     )
+
+    _save_messages(
+        session_id=payload.session_id,
+        user_id=user_id,
+        mission_id=payload.mission_id,
+        user_content=payload.message,
+        assistant_content=chat_response.response,
+    )
+
     return _to_runtime_response(
         payload=payload,
         chat_response=chat_response,

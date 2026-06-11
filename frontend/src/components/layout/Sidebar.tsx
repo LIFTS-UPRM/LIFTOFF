@@ -38,6 +38,17 @@ function RocketIcon() {
   );
 }
 
+function LogOutIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 function ChevronDownIcon({ isOpen }: { isOpen: boolean }) {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"
@@ -53,6 +64,7 @@ interface SidebarProps {
   isOpen: boolean;
   onNewChat?: () => void;
   onOpenSearch?: () => void;
+  onLogout?: () => void;
   missions: Mission[];
   activeMissionId: string;
 }
@@ -61,6 +73,7 @@ export default function Sidebar({
   isOpen,
   onNewChat,
   onOpenSearch,
+  onLogout,
   missions,
   activeMissionId,
 }: SidebarProps) {
@@ -109,7 +122,7 @@ export default function Sidebar({
       </div>
 
       {/* Scrollable body */}
-      <div className={styles.scrollArea}>
+      <div className={styles.scrollArea} style={{ flex: 1 }}>
 
         {/* Missions */}
         <section className={styles.section}>
@@ -163,6 +176,21 @@ export default function Sidebar({
         </section>
 
       </div>
+
+      {/* Footer: logout */}
+      {onLogout && (
+        <div className={styles.sidebarFooter}>
+          <button
+            className={styles.logoutBtn}
+            type="button"
+            onClick={onLogout}
+            title="Sign out"
+          >
+            <span className={styles.quickIcon}><LogOutIcon /></span>
+            Sign out
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

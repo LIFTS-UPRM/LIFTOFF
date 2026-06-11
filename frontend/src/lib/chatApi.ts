@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import type { TrajectoryArtifact, WriteResult } from "@/types/chat";
 
 export interface ChatApiResponse {
@@ -10,10 +11,6 @@ export interface ChatApiResponse {
   write_result?: WriteResult | null;
 }
 
-const RUNTIME_SESSION_STORAGE_KEY = "stratos-runtime-session-id";
-const RUNTIME_USER_STORAGE_KEY = "stratos-runtime-user-id";
-const DEFAULT_RUNTIME_USER_ID = "stratos-local-user";
-
 function getRuntimeEndpoint(): string {
   const configuredBase = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
   if (configuredBase) {
@@ -23,7 +20,6 @@ function getRuntimeEndpoint(): string {
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;
     const isLocalDevHost = hostname === "localhost" || hostname === "127.0.0.1";
-
     if (isLocalDevHost && (protocol === "http:" || protocol === "https:")) {
       return "http://127.0.0.1:8000/runtime/request";
     }
@@ -48,12 +44,16 @@ function safeLocalStorageSet(key: string, value: string): void {
   }
 }
 
-function getStoredValue(key: string, fallback: string): string {
-  if (typeof window === "undefined") {
-    return fallback;
+function safeLocalStorageRemove(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
   }
+}
 
-  return safeLocalStorageGet(key) || fallback;
+function sessionKey(missionId: string): string {
+  return `stratos-session-${missionId}`;
 }
 
 function makeRuntimeSessionId(): string {
@@ -73,49 +73,72 @@ function makeRuntimeSessionId(): string {
   );
 }
 
-function getRuntimeSessionId(): string {
+function getRuntimeSessionId(missionId: string): string {
   if (typeof window === "undefined") {
     return makeRuntimeSessionId();
   }
 
-  const existing = safeLocalStorageGet(RUNTIME_SESSION_STORAGE_KEY);
-  if (existing) {
-    return existing;
-  }
+  const key = sessionKey(missionId);
+  const existing = safeLocalStorageGet(key);
+  if (existing) return existing;
 
   const sessionId = makeRuntimeSessionId();
-  safeLocalStorageSet(RUNTIME_SESSION_STORAGE_KEY, sessionId);
+  safeLocalStorageSet(key, sessionId);
   return sessionId;
 }
 
-function rememberRuntimeSessionId(sessionId: string): void {
+function rememberRuntimeSessionId(missionId: string, sessionId: string): void {
   if (typeof window !== "undefined" && sessionId) {
-    safeLocalStorageSet(RUNTIME_SESSION_STORAGE_KEY, sessionId);
+    safeLocalStorageSet(sessionKey(missionId), sessionId);
   }
+}
+
+export function clearRuntimeSessionId(missionId: string): void {
+  if (typeof window !== "undefined") {
+    safeLocalStorageRemove(sessionKey(missionId));
+  }
+}
+
+async function getAuthHeaders(): Promise<{ Authorization: string; userId: string }> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("Not authenticated. Please sign in.");
+  }
+
+  return {
+    Authorization: `Bearer ${session.access_token}`,
+    userId: session.user.id,
+  };
 }
 
 /**
  * Send a message to the STRATOS backend and return the response.
  * Throws an Error with a user-facing message on network or server failure.
  *
- * Client-supplied history is not forwarded — the runtime contract rejects it.
- * Server-side session continuity is managed via session_id.
+ * Session continuity is managed per-mission via session_id.
+ * Conversation history is stored server-side; the client does not send it.
  */
 export async function sendMessage(
   message: string,
   missionId: string,
 ): Promise<ChatApiResponse> {
-  let res: Response;
+  const { Authorization, userId } = await getAuthHeaders();
+  const sessionId = getRuntimeSessionId(missionId);
 
+  let res: Response;
   try {
-    const endpoint = getRuntimeEndpoint();
-    res = await fetch(endpoint, {
+    res = await fetch(getRuntimeEndpoint(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization,
+      },
       body: JSON.stringify({
-        user_id: getStoredValue(RUNTIME_USER_STORAGE_KEY, DEFAULT_RUNTIME_USER_ID),
+        user_id: userId,
         mission_id: missionId,
-        session_id: getRuntimeSessionId(),
+        session_id: sessionId,
         operation: "chat",
         message,
         write_intent: null,
@@ -123,7 +146,7 @@ export async function sendMessage(
     });
   } catch {
     throw new Error(
-      "Unable to reach the STRATOS backend. Check that the server is running."
+      "Unable to reach the STRATOS backend. Check that the server is running.",
     );
   }
 
@@ -133,12 +156,12 @@ export async function sendMessage(
       const body = await res.json();
       if (body?.detail) detail = String(body.detail);
     } catch {
-      // ignore JSON parse failure - keep the status-code message
+      // ignore JSON parse failure
     }
     throw new Error(detail);
   }
 
   const data = (await res.json()) as ChatApiResponse;
-  rememberRuntimeSessionId(data.session_id);
+  rememberRuntimeSessionId(missionId, data.session_id);
   return data;
 }
