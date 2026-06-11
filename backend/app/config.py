@@ -24,6 +24,8 @@ class Settings:
     faa_client_secret: str
     laminar_user_key: str
     astra_gfs_cache_dir: str
+    supabase_url: str
+    supabase_service_key: str
 
 
 @lru_cache(maxsize=1)
@@ -46,4 +48,6 @@ def get_settings() -> Settings:
             "ASTRA_GFS_CACHE_DIR",
             str(default_astra_cache_dir),
         ),
+        supabase_url=os.getenv("SUPABASE_URL", ""),
+        supabase_service_key=os.getenv("SUPABASE_SERVICE_KEY", ""),
     )
