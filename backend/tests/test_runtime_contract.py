@@ -5,12 +5,21 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.auth import get_current_user_id
 from app.main import app
 from app.schemas import CHAT_PAYLOAD_MAX_BYTES, CHAT_PAYLOAD_MAX_DEPTH
+
+
+@pytest.fixture(autouse=True)
+def authenticated_user():
+    app.dependency_overrides[get_current_user_id] = lambda: "u_123"
+    yield
+    app.dependency_overrides.pop(get_current_user_id, None)
 
 
 def make_message(content: str) -> SimpleNamespace:

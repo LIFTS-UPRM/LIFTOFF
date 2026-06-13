@@ -154,7 +154,11 @@ export async function sendMessage(
     let detail = `Server error ${res.status}`;
     try {
       const body = await res.json();
-      if (body?.detail) detail = String(body.detail);
+      if (body?.detail) {
+        detail = typeof body.detail === "string"
+          ? body.detail
+          : (body.detail?.error ?? JSON.stringify(body.detail));
+      }
     } catch {
       // ignore JSON parse failure
     }
