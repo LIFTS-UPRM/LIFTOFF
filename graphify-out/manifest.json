@@ -1,0 +1,342 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1781117654.618714,
+    "ast_hash": "f3be36688642cba187a82d811225e19a",
+    "semantic_hash": "f3be36688642cba187a82d811225e19a"
+  },
+  "backend/app/__init__.py": {
+    "mtime": 1776793756.7866356,
+    "ast_hash": "da2af8d11abe4119f5a5f3f8c104ee4e",
+    "semantic_hash": "da2af8d11abe4119f5a5f3f8c104ee4e"
+  },
+  "backend/app/config.py": {
+    "mtime": 1782145218.6409855,
+    "ast_hash": "aa7a863041c92fbdda4578b74bce226f",
+    "semantic_hash": "aa7a863041c92fbdda4578b74bce226f"
+  },
+  "backend/app/logging.py": {
+    "mtime": 1776793756.7867713,
+    "ast_hash": "b0f9b9eea6283511c7d5b1adaa889a8a",
+    "semantic_hash": "b0f9b9eea6283511c7d5b1adaa889a8a"
+  },
+  "backend/app/main.py": {
+    "mtime": 1782145218.6415153,
+    "ast_hash": "f746d2789fa414840f2a423377a7b01a",
+    "semantic_hash": "f746d2789fa414840f2a423377a7b01a"
+  },
+  "backend/app/prompt_assembly.py": {
+    "mtime": 1776793756.7870598,
+    "ast_hash": "2ecdd1fd9f85798aa9e4ea1a77290b12",
+    "semantic_hash": "2ecdd1fd9f85798aa9e4ea1a77290b12"
+  },
+  "backend/app/schemas.py": {
+    "mtime": 1782145218.6422026,
+    "ast_hash": "b25746e4879cc8c92cd45f4403287e44",
+    "semantic_hash": "b25746e4879cc8c92cd45f4403287e44"
+  },
+  "backend/app/usage_log.py": {
+    "mtime": 1778803997.4785516,
+    "ast_hash": "1ccced3fb76eb3fcfe2f8dc4b5ee4585",
+    "semantic_hash": "1ccced3fb76eb3fcfe2f8dc4b5ee4585"
+  },
+  "backend/llm.py": {
+    "mtime": 1778803051.4633546,
+    "ast_hash": "62d80c5f3f6af210fe5691699d87ee0b",
+    "semantic_hash": "62d80c5f3f6af210fe5691699d87ee0b"
+  },
+  "backend/main.py": {
+    "mtime": 1778801770.2226982,
+    "ast_hash": "8e553f23c9eccebd8c34d42491195a62",
+    "semantic_hash": "8e553f23c9eccebd8c34d42491195a62"
+  },
+  "backend/mcp_servers/astra_server.py": {
+    "mtime": 1778803051.4624789,
+    "ast_hash": "0b74dcfb5cc9025cb9f0ee4133f9f021",
+    "semantic_hash": "0b74dcfb5cc9025cb9f0ee4133f9f021"
+  },
+  "backend/mcp_servers/notam_server.py": {
+    "mtime": 1778801770.223069,
+    "ast_hash": "88e4bf09b0293da906283c834d29269b",
+    "semantic_hash": "88e4bf09b0293da906283c834d29269b"
+  },
+  "backend/mcp_servers/sondehub_server.py": {
+    "mtime": 1778803051.462941,
+    "ast_hash": "4eab14fd741db0f8b93c87705aba8dad",
+    "semantic_hash": "4eab14fd741db0f8b93c87705aba8dad"
+  },
+  "backend/mcp_servers/weather_server.py": {
+    "mtime": 1778803051.4620552,
+    "ast_hash": "69f8a2eb5a3d7c76c54d9c28cb771eee",
+    "semantic_hash": "69f8a2eb5a3d7c76c54d9c28cb771eee"
+  },
+  "backend/tests/test_chat_tool_groups.py": {
+    "mtime": 1778806061.0824618,
+    "ast_hash": "b5d6ad313dc73dfbf59e3e9d028843d1",
+    "semantic_hash": "b5d6ad313dc73dfbf59e3e9d028843d1"
+  },
+  "backend/tests/test_llm_sondehub_tools.py": {
+    "mtime": 1778803372.657452,
+    "ast_hash": "125e5ae7ae9fd8eadcf01ab938752a74",
+    "semantic_hash": "125e5ae7ae9fd8eadcf01ab938752a74"
+  },
+  "backend/tests/test_mcp_bridge.py": {
+    "mtime": 1778803372.6581197,
+    "ast_hash": "4e811a14bc4db1ca813cb22dc3de526f",
+    "semantic_hash": "4e811a14bc4db1ca813cb22dc3de526f"
+  },
+  "backend/tests/test_notam_server.py": {
+    "mtime": 1778803372.6588817,
+    "ast_hash": "c5a0b25c7ab546f3b3e04e40bf357671",
+    "semantic_hash": "c5a0b25c7ab546f3b3e04e40bf357671"
+  },
+  "backend/tests/test_prompt_assembly.py": {
+    "mtime": 1777182176.7478743,
+    "ast_hash": "4b25b0572b72ef296f2b2ee09e1d36e5",
+    "semantic_hash": "4b25b0572b72ef296f2b2ee09e1d36e5"
+  },
+  "backend/tests/test_time_aliases.py": {
+    "mtime": 1778803077.183382,
+    "ast_hash": "6baa514c8da6785993cc5084da002c83",
+    "semantic_hash": "6baa514c8da6785993cc5084da002c83"
+  },
+  "backend/vendor/__init__.py": {
+    "mtime": 1776793756.7887487,
+    "ast_hash": "a440a1ee05854a5bc0adab731df40aff",
+    "semantic_hash": "a440a1ee05854a5bc0adab731df40aff"
+  },
+  "backend/vendor/hab_predictor/__init__.py": {
+    "mtime": 1776793756.7891047,
+    "ast_hash": "27418c7c5566b07d660dd809aeade104",
+    "semantic_hash": "27418c7c5566b07d660dd809aeade104"
+  },
+  "backend/vendor/hab_predictor/app.py": {
+    "mtime": 1778803051.460226,
+    "ast_hash": "0d2c7d68ed6a64e9e8f74bcdc25d3f90",
+    "semantic_hash": "0d2c7d68ed6a64e9e8f74bcdc25d3f90"
+  },
+  "backend/vendor/hab_predictor/astra/GFS.py": {
+    "mtime": 1776793756.7894943,
+    "ast_hash": "d0919fd1d875e935650f0fe0ea653149",
+    "semantic_hash": "d0919fd1d875e935650f0fe0ea653149"
+  },
+  "backend/vendor/hab_predictor/astra/__init__.py": {
+    "mtime": 1776793756.7895892,
+    "ast_hash": "95d3270aac42464918f89ad0818945b9",
+    "semantic_hash": "95d3270aac42464918f89ad0818945b9"
+  },
+  "backend/vendor/hab_predictor/astra/available_balloons_parachutes.py": {
+    "mtime": 1776793756.7896695,
+    "ast_hash": "8fd592a859e9b95936f07d4415ec45d2",
+    "semantic_hash": "8fd592a859e9b95936f07d4415ec45d2"
+  },
+  "backend/vendor/hab_predictor/astra/drag_helium.py": {
+    "mtime": 1776793756.7898586,
+    "ast_hash": "4c8637da29eb7ee30606479f520aa482",
+    "semantic_hash": "4c8637da29eb7ee30606479f520aa482"
+  },
+  "backend/vendor/hab_predictor/astra/flight_tools.py": {
+    "mtime": 1776793756.7899969,
+    "ast_hash": "82a4bf00256e1acc6af969c5b9febb70",
+    "semantic_hash": "82a4bf00256e1acc6af969c5b9febb70"
+  },
+  "backend/vendor/hab_predictor/astra/global_tools.py": {
+    "mtime": 1776793756.7900963,
+    "ast_hash": "7c48a87fa3558ab15a3f98cc6adb92db",
+    "semantic_hash": "7c48a87fa3558ab15a3f98cc6adb92db"
+  },
+  "backend/vendor/hab_predictor/astra/interpolate.py": {
+    "mtime": 1776793756.7902212,
+    "ast_hash": "68684dda639766918d5a8f956ec5ec98",
+    "semantic_hash": "68684dda639766918d5a8f956ec5ec98"
+  },
+  "backend/vendor/hab_predictor/astra/simulator.py": {
+    "mtime": 1776793756.7903845,
+    "ast_hash": "8d4a18763bd98971ac3735921fee46a1",
+    "semantic_hash": "8d4a18763bd98971ac3735921fee46a1"
+  },
+  "backend/vendor/hab_predictor/astra/target_landing.py": {
+    "mtime": 1776793756.7905557,
+    "ast_hash": "78e53b964e12015333c01dbba391be50",
+    "semantic_hash": "78e53b964e12015333c01dbba391be50"
+  },
+  "backend/vendor/hab_predictor/astra/weather.py": {
+    "mtime": 1776793756.790706,
+    "ast_hash": "f69c67e234ac62234caecd6d735db98e",
+    "semantic_hash": "f69c67e234ac62234caecd6d735db98e"
+  },
+  "backend/vendor/hab_predictor/astra/wind_space_perturbation.py": {
+    "mtime": 1776793756.7934644,
+    "ast_hash": "47f7ead43658d4c212fee79bd0c8c572",
+    "semantic_hash": "47f7ead43658d4c212fee79bd0c8c572"
+  },
+  "backend/vendor/hab_predictor/astra/wind_time_perturbation.py": {
+    "mtime": 1776793756.7980826,
+    "ast_hash": "4f327bcb4b8c99151b97d0714bdd55a2",
+    "semantic_hash": "4f327bcb4b8c99151b97d0714bdd55a2"
+  },
+  "backend/vendor/hab_predictor/bin/astra-sim": {
+    "mtime": 1776793756.79835,
+    "ast_hash": "c501abf653b863fbc93658b970e44789",
+    "semantic_hash": "c501abf653b863fbc93658b970e44789"
+  },
+  "backend/vendor/hab_predictor/docs/source/conf.py": {
+    "mtime": 1776793756.798751,
+    "ast_hash": "5ab87ac84d7931a2fc18b6b36d81891e",
+    "semantic_hash": "5ab87ac84d7931a2fc18b6b36d81891e"
+  },
+  "backend/vendor/hab_predictor/examples/example_cutdown.py": {
+    "mtime": 1776793756.7991102,
+    "ast_hash": "9e34d7e4b46d4328dff1ffdb416830b6",
+    "semantic_hash": "9e34d7e4b46d4328dff1ffdb416830b6"
+  },
+  "backend/vendor/hab_predictor/examples/example_floating_flight.py": {
+    "mtime": 1776793756.7991998,
+    "ast_hash": "863c664c8f23a3c1ac1e835bab80daf5",
+    "semantic_hash": "863c664c8f23a3c1ac1e835bab80daf5"
+  },
+  "backend/vendor/hab_predictor/examples/example_forecast.py": {
+    "mtime": 1776793756.7992718,
+    "ast_hash": "ce8660e916801f330de4527f411d7d59",
+    "semantic_hash": "ce8660e916801f330de4527f411d7d59"
+  },
+  "backend/vendor/hab_predictor/examples/example_forecast_near_Greenwich_Meridian.py": {
+    "mtime": 1776793756.7993581,
+    "ast_hash": "ba917cea680d938867a6c7042e45f3a5",
+    "semantic_hash": "ba917cea680d938867a6c7042e45f3a5"
+  },
+  "backend/vendor/hab_predictor/examples/example_sounding.py": {
+    "mtime": 1776793756.799436,
+    "ast_hash": "837e74d4d7fd159007e116a209c44f3c",
+    "semantic_hash": "837e74d4d7fd159007e116a209c44f3c"
+  },
+  "backend/vendor/hab_predictor/examples/example_target_landing.py": {
+    "mtime": 1776793756.7995195,
+    "ast_hash": "a80447dfa8da949ec5d586a69628ea32",
+    "semantic_hash": "a80447dfa8da949ec5d586a69628ea32"
+  },
+  "backend/vendor/hab_predictor/mcp_bridge.py": {
+    "mtime": 1776793756.8032074,
+    "ast_hash": "033d52bbdc4eff8e0f4c015d24c64580",
+    "semantic_hash": "033d52bbdc4eff8e0f4c015d24c64580"
+  },
+  "backend/vendor/hab_predictor/setup.py": {
+    "mtime": 1776793756.8033469,
+    "ast_hash": "81674354f0cc3d60ace73d511c434c89",
+    "semantic_hash": "81674354f0cc3d60ace73d511c434c89"
+  },
+  "backend/vendor/hab_predictor/static/app.js": {
+    "mtime": 1776793756.8034928,
+    "ast_hash": "8b6088d1ed08770cf5e7debcb12ba61d",
+    "semantic_hash": "8b6088d1ed08770cf5e7debcb12ba61d"
+  },
+  "backend/vendor/hab_predictor/test/test_flight.py": {
+    "mtime": 1776793756.8079262,
+    "ast_hash": "d8a6323bb1b441505d7be9eef69d5392",
+    "semantic_hash": "d8a6323bb1b441505d7be9eef69d5392"
+  },
+  "backend/vendor/hab_predictor/test/test_weather.py": {
+    "mtime": 1776793756.8079944,
+    "ast_hash": "5e7610d13b88b27eb7f8f4bd133529eb",
+    "semantic_hash": "5e7610d13b88b27eb7f8f4bd133529eb"
+  },
+  "backend/vendor/hab_predictor/test/test_web_app.py": {
+    "mtime": 1778803372.660849,
+    "ast_hash": "f39c698b286b3780e16cbf7aed21ea85",
+    "semantic_hash": "f39c698b286b3780e16cbf7aed21ea85"
+  },
+  "frontend/.eslintrc.json": {
+    "mtime": 1776793756.8082342,
+    "ast_hash": "6c636976577d27c2ebdc12da2f6f2b56",
+    "semantic_hash": "6c636976577d27c2ebdc12da2f6f2b56"
+  },
+  "frontend/eslint.config.mjs": {
+    "mtime": 1776793756.808513,
+    "ast_hash": "c642b081063dac59c8e204a7866d8e30",
+    "semantic_hash": "c642b081063dac59c8e204a7866d8e30"
+  },
+  "frontend/next.config.mjs": {
+    "mtime": 1782145218.643396,
+    "ast_hash": "f1f6e41acd487599ea1f4532d893407c",
+    "semantic_hash": "f1f6e41acd487599ea1f4532d893407c"
+  },
+  "frontend/package.json": {
+    "mtime": 1782145218.6450124,
+    "ast_hash": "2eb5f62c839fbfd204b5d2a25881377c",
+    "semantic_hash": "2eb5f62c839fbfd204b5d2a25881377c"
+  },
+  "frontend/src/app/chat/layout.tsx": {
+    "mtime": 1777662857.4449925,
+    "ast_hash": "4fc5bbbcf4319c79e5091222c027de40",
+    "semantic_hash": "4fc5bbbcf4319c79e5091222c027de40"
+  },
+  "frontend/src/app/chat/page.tsx": {
+    "mtime": 1782145218.645664,
+    "ast_hash": "9ea4267912a700c3a35c93df165b1ae2",
+    "semantic_hash": "9ea4267912a700c3a35c93df165b1ae2"
+  },
+  "frontend/src/app/layout.tsx": {
+    "mtime": 1777662857.446167,
+    "ast_hash": "efe34d0fb7ed84d838bcb3d3e9c788d5",
+    "semantic_hash": "efe34d0fb7ed84d838bcb3d3e9c788d5"
+  },
+  "frontend/src/app/page.tsx": {
+    "mtime": 1782145218.646922,
+    "ast_hash": "eadcdf90c5226c5fffb8af7793a91a6a",
+    "semantic_hash": "eadcdf90c5226c5fffb8af7793a91a6a"
+  },
+  "frontend/src/components/chat/InputBar.tsx": {
+    "mtime": 1776793756.8128307,
+    "ast_hash": "bd2ab7e317aa6503003ef24415b1f4a2",
+    "semantic_hash": "bd2ab7e317aa6503003ef24415b1f4a2"
+  },
+  "frontend/src/components/chat/MessageList.tsx": {
+    "mtime": 1778801732.6695526,
+    "ast_hash": "5d33c50884212344c39d92e26e784d48",
+    "semantic_hash": "5d33c50884212344c39d92e26e784d48"
+  },
+  "frontend/src/components/chat/TrajectoryArtifactMap.tsx": {
+    "mtime": 1778801732.669884,
+    "ast_hash": "85be2de9c6f2418d5d8373e6c2d28cd7",
+    "semantic_hash": "85be2de9c6f2418d5d8373e6c2d28cd7"
+  },
+  "frontend/src/components/layout/Header.tsx": {
+    "mtime": 1778801770.224843,
+    "ast_hash": "4c44f3e398e04ed1c512049be5b02237",
+    "semantic_hash": "4c44f3e398e04ed1c512049be5b02237"
+  },
+  "frontend/src/components/layout/Sidebar.tsx": {
+    "mtime": 1782145218.6479974,
+    "ast_hash": "3851fc4142d4d1bb5328f70e3c8ab456",
+    "semantic_hash": "3851fc4142d4d1bb5328f70e3c8ab456"
+  },
+  "frontend/src/lib/chatApi.ts": {
+    "mtime": 1782145218.6485345,
+    "ast_hash": "ecd52008c94fee59623fd1e87792f0fa",
+    "semantic_hash": "ecd52008c94fee59623fd1e87792f0fa"
+  },
+  "frontend/src/lib/missions.ts": {
+    "mtime": 1776980824.4843476,
+    "ast_hash": "33524ab2627a0b8649d80cf47060ab08",
+    "semantic_hash": "33524ab2627a0b8649d80cf47060ab08"
+  },
+  "frontend/src/types/chat.ts": {
+    "mtime": 1782145218.6490488,
+    "ast_hash": "9491a562647d4fb209cbd500afad3c32",
+    "semantic_hash": "9491a562647d4fb209cbd500afad3c32"
+  },
+  "frontend/src/types/mission.ts": {
+    "mtime": 1776980824.4841638,
+    "ast_hash": "b8f2e28dcd2d1d96bb2641d979c39891",
+    "semantic_hash": "b8f2e28dcd2d1d96bb2641d979c39891"
+  },
+  "frontend/tsconfig.json": {
+    "mtime": 1776793756.8138614,
+    "ast_hash": "d6e6b93fb360c85a309fc32ca6ebeb9b",
+    "semantic_hash": "d6e6b93fb360c85a309fc32ca6ebeb9b"
+  },
+  "package.json": {
+    "mtime": 1776793756.8139167,
+    "ast_hash": "f181aff1bb8c884a5eb287547e498b26",
+    "semantic_hash": "f181aff1bb8c884a5eb287547e498b26"
+  }
+}
