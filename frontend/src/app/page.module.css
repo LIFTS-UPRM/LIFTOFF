@@ -178,6 +178,126 @@
   }
 }
 
+/* ─── Auth form ──────────────────────────────────────────────── */
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.formField {
+  display: grid;
+  gap: 6px;
+}
+
+.formLabel {
+  color: rgba(231, 236, 245, 0.72);
+  font-size: 0.83rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.formInput {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f7fb;
+  font: inherit;
+  font-size: 0.96rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.formInput::placeholder {
+  color: rgba(231, 236, 245, 0.32);
+}
+
+.formInput:focus {
+  border-color: rgba(99, 148, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(99, 148, 255, 0.12);
+}
+
+.formError {
+  color: #ff7b7b;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 80, 80, 0.18);
+}
+
+.formSuccess {
+  color: #6ee7b7;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.18);
+}
+
+.formSubmit {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4a7bff 0%, #2e5ce6 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  box-shadow: 0 4px 16px rgba(74, 123, 255, 0.28);
+}
+
+.formSubmit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(74, 123, 255, 0.36);
+}
+
+.formSubmit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.formSubmit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.formToggle {
+  text-align: center;
+  color: rgba(231, 236, 245, 0.52);
+  font-size: 0.87rem;
+  margin-top: 4px;
+}
+
+.formToggleLink {
+  background: none;
+  border: none;
+  color: #7ba8ff;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(123, 168, 255, 0.4);
+  padding: 0;
+}
+
+.formToggleLink:hover {
+  color: #a0c0ff;
+}
+
 @media (max-width: 768px) {
   .page {
     padding: 20px;

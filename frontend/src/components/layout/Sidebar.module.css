@@ -247,3 +247,32 @@
   color: var(--color-text-muted);
   padding: 4px 0;
 }
+
+.sidebarFooter {
+  padding: 10px 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  text-align: left;
+}
+
+.logoutBtn:hover {
+  background: rgba(255, 100, 100, 0.08);
+  color: #ff9090;
+}

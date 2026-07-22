@@ -64,6 +64,17 @@ export interface TrajectoryArtifact {
   restriction_overlay?: RestrictionOverlay | null;
 }
 
+export interface WriteResult {
+  status: "validated";
+  operation:
+    | "checklist_item_set_status"
+    | "append_planning_note"
+    | "append_decision_entry"
+    | "update_status_summary";
+  target_file: string;
+  summary: string;
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -72,4 +83,5 @@ export interface Message {
   // Server-generated UI metadata only; never sent back as trusted /chat input.
   toolCalls?: ToolCallRecord[];
   trajectoryArtifact?: TrajectoryArtifact | null;
+  writeResult?: WriteResult | null;
 }
